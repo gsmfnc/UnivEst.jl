@@ -54,6 +54,17 @@ struct ctrl_training_parameters
     tolerances::Vector{Float64}
 end
 
+struct dt_training_parameters
+    f::Function
+    h::Function
+    n::Int64
+
+    opt
+    y_samples::Matrix{Float64}
+
+    add_loss::Function
+end
+
 #EXPORTED FUNCTIONS#############################################################
 
 function fft_plot(x::Vector{Float64}, ts::Float64, tfinal::Float64)
@@ -150,8 +161,27 @@ function set_ctrl_env_parameter(env::ctrl_training_parameters, param::String,
     end
 
     a = arguments_array;
-    new_env = gain_training_parameters(a[1], a[2], a[3], a[4], a[5], a[6],
+    new_env = ctrl_training_parameters(a[1], a[2], a[3], a[4], a[5], a[6],
         a[7]);
+    return new_env;
+end
+
+function set_dt_env_parameter(env::dt_training_parameters, param::String,
+        new_value::Any)
+    training_parameters_labels = ["f", "h", "n", "opt", "y_samples",
+        "add_loss"];
+
+    arguments_array = [env.f, env.h, env.n, env.opt, env.y_samples,
+        env.add_loss];
+
+    for i = 1:1:length(training_parameters_labels)
+        if training_parameters_labels[i] == param
+            arguments_array[i] = new_value;
+        end
+    end
+
+    a = arguments_array;
+    new_env = dt_training_parameters(a[1], a[2], a[3], a[4], a[5], a[6]);
     return new_env;
 end
 
@@ -263,6 +293,15 @@ function init_ctrl_env(alpha::Float64, beta::Float64, gamma::Float64,
         [reltol, abstol]);
 end
 
+function init_dt_env(f::Function, h::Function, n::Int64, opt,
+        y_samples::Matrix{Float64})
+
+    blank2(env, u, p, u0) = 0;
+    env = dt_training_parameters(f, h, n, opt, y_samples, blank2);
+
+    return env;
+end
+
 function get_sys_solution(env::training_parameters)
     if env.f(env.u0, env.p, 0) == []
         f = get_system_dynamics(env.phi, env.u0, env.p);
@@ -319,6 +358,28 @@ function get_ctrl_sol(env::ctrl_training_parameters, estp::Vector{Float64},
     end
 
     return sol.t, sol[:, :], u_vals
+end
+
+function get_dt_sys_sol(env::dt_training_parameters, estp::Vector{Float64},
+        u0::Vector{Float64}, steps::Int64)
+    sol = zeros(length(u0), steps);
+    sol[:, 1] = u0;
+    for i = 2:1:steps
+        sol[:, i] = get_dt_step(env.f, sol[:, i - 1], estp, i);
+    end
+
+    return sol;
+end
+
+function get_dt_sys_sol(f::Function, estp::Vector{Float64},
+        u0::Vector{Float64}, steps::Int64)
+    sol = zeros(length(u0), steps);
+    sol[:, 1] = u0;
+    for i = 2:1:steps
+        sol[:, i] = get_dt_step(f, sol[:, i - 1], estp, i);
+    end
+
+    return sol;
 end
 
 ################################################################################
@@ -378,6 +439,10 @@ end
 function get_freq_sol(freqs::Vector{Float64}, phases::Vector{Float64},
         amps::Vector{Float64}, bias::Float64, t::Float64)
     return sum(amps .* sin.(freqs * t .+ phases)) + bias;
+end
+
+function get_dt_step(f, ut0::Vector{Float64}, p::Vector{Float64}, i::Int64)
+    return f(ut0, p, i)
 end
 
 function findlocalmaxima(signal::Vector{Float64})

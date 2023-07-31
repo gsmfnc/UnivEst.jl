@@ -118,6 +118,28 @@ function ctrl_training_routine(env::ctrl_training_parameters,
     return estp;
 end
 
+function dt_training_routine(env::dt_training_parameters, estp::Vector{Float64},
+        its::Int)
+    global SUPPENV
+    SUPPENV = env;
+
+    pinit = Lux.ComponentArray(estp);
+    adtype = Optimization.AutoZygote();
+    optf = Optimization.OptimizationFunction((x, p) -> loss_dt(x), adtype);
+    optprob = Optimization.OptimizationProblem(optf, pinit);
+
+    @time begin
+    res = Optimization.solve(optprob,
+                            SUPPENV.opt,
+                            callback = callback,
+                            maxiters = its);
+    end
+    estp = res.u;
+    println(estp)
+
+    return estp;
+end
+
 ################################################################################
 
 function loss(p)
@@ -290,4 +312,27 @@ function loss_ctrl(p)
     end
 
     return l;
+end
+
+function loss_dt(p)
+    hu0 = p[1:SUPPENV.n];
+    hp = p[(SUPPENV.n + 1):end];
+
+    vloss = sum(SUPPENV.h(hu0, hp) - SUPPENV.y_samples[1]);
+
+    sol = hu0;
+    for i = 2:1:size(SUPPENV.y_samples, 1)
+        sol = get_dt_step(SUPPENV.f, sol, hp, i);
+        vloss = vloss + sum(abs.(SUPPENV.h(sol, hp) -
+            SUPPENV.y_samples[i]));
+    end
+
+    vloss = vloss + SUPPENV.add_loss(SUPPENV, sol, hp, hu0);
+
+    return vloss;
+end
+
+callback = function (p, l)
+    println("loss: ", l, ", parameters: ", p)
+    return false
 end
