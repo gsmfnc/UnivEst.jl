@@ -1,29 +1,35 @@
-module UnivEst
-
-export DiffEqFlux, ADAM, LBFGS, BFGS
-export init_env, get_sys_solution, set_env_parameter, init_gain_env, init_dt_env
-export get_dt_sys_sol
-export set_gain_env_parameter, init_ctrl_env, set_ctrl_env_parameter
-export set_dt_env_parameter
-export get_lyapunov_derivative_values, get_ctrl_sol
-export estimate_time_derivatives, extract_estimates, test_hgo
-export test_timevarying_hgo, plot_gain
-export training_routine, freq_training_routine, alg_training_routine
-export gain_training_routine, ctrl_training_routine, dt_training_routine
-export fft_plot, find_peaks_infos
-
 using DifferentialEquations, DiffEqFlux, Lux, Optimization, Plots, FFTW, DSP
-using Optim
-include("functions.jl")
-include("observers_functions.jl")
-include("training_functions.jl")
+using Optim, ControlSystems
+
+#export system_obs 
+include("structs/structs.jl")
+
+#export init_system_obs
+include("structs/init_structs.jl")
+
+#export get_sys_solution
+include("system_solution/system_solution.jl")
+
+#export bode_hgo, estimate_t_derivatives, get_hgo_matrices
+include("observers/observers.jl")
+
+struct tmp
+    CLASSICALHGO
+    M_CASCADE
+    CASCADE
+    MIN_CASCADE
+    INCREASING_GAIN
+    DECREASING_GAIN
+    TIMEVARYING_GAIN
+end
 
 CLASSICALHGO = 0;
-CASCADE1 = 1;
-CASCADE2 = 2;
-
+M_CASCADE = 1;
+CASCADE = 2;
+MIN_CASCADE = 2;
 INCREASING_GAIN = 0;
 DECREASING_GAIN = 1;
 TIMEVARYING_GAIN = 2;
 
-end
+UnivEst = tmp(CLASSICALHGO, M_CASCADE, CASCADE, MIN_CASCADE, INCREASING_GAIN,
+    DECREASING_GAIN, TIMEVARYING_GAIN);

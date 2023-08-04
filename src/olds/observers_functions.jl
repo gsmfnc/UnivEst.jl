@@ -1,4 +1,6 @@
-#EXPORTED FUNCTIONS#############################################################
+################################################################################
+###############################EXPORTED FUNCTIONS###############################
+################################################################################
 
 function test_hgo(epsilon, phi, p, hphi, hp, u0, hu0, t0, tf, ts;
         hgo_type = UnivEst.CLASSICALHGO, coeffs = [], abstol = 1e-8,
@@ -53,10 +55,10 @@ function estimate_time_derivatives(env::training_parameters, hgo_type::Int,
     if hgo_type == UnivEst.CLASSICALHGO
         m = N + 1;
     end
-    if hgo_type == UnivEst.CASCADE1
+    if hgo_type == UnivEst.M_CASCADE
         m = 2 * N + 1;
     end
-    if hgo_type == UnivEst.CASCADE2
+    if hgo_type == UnivEst.CASCADE
         m = 2 * N;
     end
 
@@ -69,7 +71,7 @@ function estimate_time_derivatives(env::training_parameters, hgo_type::Int,
 end
 
 function extract_estimates(data::Matrix{Float64}, hgo_type::Int)
-    if hgo_type == UnivEst.CASCADE1
+    if hgo_type == UnivEst.M_CASCADE
         N1 = Int(ceil(size(data, 1) / 2));
         N2 = size(data, 2);
 
@@ -106,7 +108,7 @@ function extract_estimates(data::Matrix{Float64}, hgo_type::Int)
         end
         return [ndata1, ndata2, ndata3, ndata4]
     end
-    if hgo_type == UnivEst.CASCADE2
+    if hgo_type == UnivEst.CASCADE
         N1 = Int(size(data, 1) / 2) + 1;
         N2 = size(data, 2);
 
@@ -165,6 +167,8 @@ function plot_gain(W, gain_type)
 end
 
 ################################################################################
+################################################################################
+################################################################################
 
 function downsampling(env::training_parameters, data::Matrix{Float64},
         ts::Float64)
@@ -175,7 +179,7 @@ function downsampling(env::training_parameters, data::Matrix{Float64},
     for i = 1:1:N2
         dataset[:, i] = data[:, (i - 1) * N + 1];
     end
-    dataset
+    return dataset
 end
 
 function estimate_time_derivatives_dynamics(du, u, p, t)
@@ -198,88 +202,18 @@ end
 
 function get_hgo_dynamics(hgo_type::Int, n::Int, coeffs::Vector,
         epsilon::Vector{Float64})
-    N = n + 1;
     if hgo_type == UnivEst.CLASSICALHGO
-        if length(coeffs) == 0
-            COEFFS_TABLE = [
-                [1.414, 1.0],
-                [2.0, 2.0, 1.0],
-                [2.613, 3.414, 2.613, 1.000],
-                [3.236, 5.240, 5.236, 3.326, 1.000],
-                [3.86, 7.46, 9.14, 7.46, 3.86, 1.0],
-                [4.49, 10.10, 14.59, 14.59, 10.10, 4.49, 1.0],
-                [5.13, 13.14, 21.85, 25.69, 21.85, 13.14, 5.13, 1.0]
-            ];
-            k = COEFFS_TABLE[N - 1];
-        else
-            k = coeffs;
-        end
-        A = zeros(N, N);
-        for i = 1:1:N
-            A[i, 1] = - k[i] * (epsilon[1]^-1)^i;
-            if i + 1 <= N
-                A[i, i + 1] = 1;
-            end
-        end
-        B = - A[:, 1];
-        H = zeros(N, 1);
-        H[N] = 1;
-
+        A, B = get_hgo_matrices(hgo_type, n, coeffs, epsilon);
         hgo(u, y) = vec(A * u + B * y);
-
         return hgo
     end
-    if hgo_type == UnivEst.CASCADE1
-        tmp_ind = 2 * (N - 1);
-        A = zeros(tmp_ind + 1, tmp_ind + 1);
-        for i = 1:1:Int(round((tmp_ind / 2)))
-            A[(i - 1) * 2 + 1, (i - 1) * 2 + 1] = - 2 * epsilon[i]^-1;
-            A[(i - 1) * 2 + 1, (i - 1) * 2 + 2] = 1;
-            A[i * 2, (i - 1) * 2 + 1] = - epsilon[i]^-2;
-            if i > 1
-                A[(i - 1) * 2 + 1, (i - 1) * 2] = 2 * epsilon[i]^-1;
-                A[i * 2, (i - 1) * 2] = epsilon[i]^-2;
-            end
-        end
-        B = - A[:, 1];
-        A[end, end - 1] = epsilon[N]^-1;
-        A[end, end] = - epsilon[N]^-1;
-
+    if hgo_type == UnivEst.M_CASCADE
+        A, B = get_hgo_matrices(hgo_type, n, coeffs, epsilon);
         cascade(u, y) = vec(A * u + B * y);
         return cascade;
     end
-    if hgo_type == UnivEst.CASCADE2
-        if length(coeffs) == 0
-            COEFFS_TABLE = [
-                [1.414, 1.0],
-                [5.0, 10.0, 5.0, 2.4],
-                [7.0, 28.0, 7.0, 9.0, 7.0, 2.85714],
-            ];
-            k = COEFFS_TABLE[N - 1];
-        else
-            k = coeffs;
-        end
-
-        tmp_ind = 2 * (N - 1);
-        A = zeros(tmp_ind, tmp_ind);
-        for i = 1:1:Int(round((tmp_ind / 2)))
-            A[(i - 1) * 2 + 1, (i - 1) * 2 + 1] =
-                - k[(i - 1) * 2 + 1] * epsilon[1]^-1;
-            A[(i - 1) * 2 + 1, (i - 1) * 2 + 2] = 1;
-            A[i * 2, (i - 1) * 2 + 1] =
-                - k[(i - 1) * 2 + 2] * epsilon[1]^-2;
-            if i < Int(round((tmp_ind / 2)))
-                A[i * 2, (i - 1) * 2 + 3] = 1;
-            end
-            if i > 1
-                A[(i - 1) * 2 + 1, (i - 1) * 2] =
-                    k[(i - 1) * 2 + 1] * epsilon[1]^-1;
-                A[i * 2, (i - 1) * 2] =
-                    k[(i - 1) * 2 + 2] * epsilon[1]^-2;
-            end
-        end
-        B = - A[:, 1];
-
+    if hgo_type == UnivEst.CASCADE
+        A, B = get_hgo_matrices(hgo_type, n, coeffs, epsilon);
         astmar(u, y) = vec(A * u + B * y);
         return astmar;
     end
@@ -292,71 +226,18 @@ end
 
 function get_hgo_dynamics(hgo_type::Int, n::Int, coeffs::Vector,
         epsilon::Vector{Float64}, phi::Function)
-    N = n + 1;
+#remove everything, call get_hgo_matrices and only leave the function def
     if hgo_type == UnivEst.CLASSICALHGO
-        if length(coeffs) == 0
-            COEFFS_TABLE = [
-                [1.414, 1.0],
-                [2.0, 2.0, 1.0],
-                [2.613, 3.414, 2.613, 1.000],
-                [3.236, 5.240, 5.236, 3.326, 1.000],
-                [3.86, 7.46, 9.14, 7.46, 3.86, 1.0],
-                [4.49, 10.10, 14.59, 14.59, 10.10, 4.49, 1.0],
-                [5.13, 13.14, 21.85, 25.69, 21.85, 13.14, 5.13, 1.0]
-            ];
-            k = COEFFS_TABLE[N - 1];
-        else
-            k = coeffs;
-        end
-        A = zeros(N, N);
-        for i = 1:1:N
-            A[i, 1] = - k[i] * (epsilon[1]^-1)^i;
-            if i + 1 <= N
-                A[i, i + 1] = 1;
-            end
-        end
-        B = - A[:, 1];
+        A, B = get_hgo_matrices(hgo_type, n, coeffs, epsilon);
         H = zeros(N, 1);
         H[end] = 1;
-
         hgo(u, y, p, t) = vec(A * u + B * y + H * phi(u, p, t));
-
         return hgo
     end
-    if hgo_type == UnivEst.CASCADE2
-        if length(coeffs) == 0
-            COEFFS_TABLE = [
-                [1.414, 1.0],
-                [5.0, 10.0, 5.0, 2.4],
-                [7.0, 28.0, 7.0, 9.0, 7.0, 2.85714],
-            ];
-            k = COEFFS_TABLE[N - 1];
-        else
-            k = coeffs;
-        end
-
-        tmp_ind = 2 * (N - 1);
-        A = zeros(tmp_ind, tmp_ind);
-        for i = 1:1:Int(round((tmp_ind / 2)))
-            A[(i - 1) * 2 + 1, (i - 1) * 2 + 1] =
-                - k[(i - 1) * 2 + 1] * epsilon[1]^-1;
-            A[(i - 1) * 2 + 1, (i - 1) * 2 + 2] = 1;
-            A[i * 2, (i - 1) * 2 + 1] =
-                - k[(i - 1) * 2 + 2] * epsilon[1]^-2;
-            if i < Int(round((tmp_ind / 2)))
-                A[i * 2, (i - 1) * 2 + 3] = 1;
-            end
-            if i > 1
-                A[(i - 1) * 2 + 1, (i - 1) * 2] =
-                    k[(i - 1) * 2 + 1] * epsilon[1]^-1;
-                A[i * 2, (i - 1) * 2] =
-                    k[(i - 1) * 2 + 2] * epsilon[1]^-2;
-            end
-        end
-        B = - A[:, 1];
+    if hgo_type == UnivEst.CASCADE
+        A, B = get_hgo_matrices(hgo_type, n, coeffs, epsilon);
         H = zeros(tmp_ind, 1);
         H[end] = 1;
-
         astmar(u, y, p, t) = vec(A * u + B * y + H * phi(u, p, t));
         return astmar;
     end
@@ -379,6 +260,7 @@ function get_timevarying_gain(gain_type::Int)
 end
 
 function get_hgo_dynamics()
+#call get_hgo_matrices
     N = length(SUPPENV.u0);
     if SUPPENV.hgo_type == UnivEst.CLASSICALHGO
         if length(SUPPENV.coeffs) == 0
@@ -414,5 +296,88 @@ function get_hgo_dynamics()
             B .* gain_vec(W, t)[1] * y + H * SUPPENV.phi(u, p, t));
 
         return hgo
+    end
+end
+
+function get_hgo_matrices(hgo_type::Int, n::Int, coeffs::Vector,
+        epsilon::Vector{Float64})
+    N = n + 1;
+    if hgo_type == UnivEst.CLASSICALHGO
+        if length(coeffs) == 0
+            COEFFS_TABLE = [
+                [1.414, 1.0],
+                [2.0, 2.0, 1.0],
+                [2.613, 3.414, 2.613, 1.000],
+                [3.236, 5.240, 5.236, 3.326, 1.000],
+                [3.86, 7.46, 9.14, 7.46, 3.86, 1.0],
+                [4.49, 10.10, 14.59, 14.59, 10.10, 4.49, 1.0],
+                [5.13, 13.14, 21.85, 25.69, 21.85, 13.14, 5.13, 1.0]
+            ];
+            k = COEFFS_TABLE[N - 1];
+        else
+            k = coeffs;
+        end
+        A = zeros(N, N);
+        for i = 1:1:N
+            A[i, 1] = - k[i] * (epsilon[1]^-1)^i;
+            if i + 1 <= N
+                A[i, i + 1] = 1;
+            end
+        end
+        B = - A[:, 1];
+
+        return A, B
+    end
+    if hgo_type == UnivEst.M_CASCADE
+        tmp_ind = 2 * (N - 1);
+        A = zeros(tmp_ind + 1, tmp_ind + 1);
+        for i = 1:1:Int(round((tmp_ind / 2)))
+            A[(i - 1) * 2 + 1, (i - 1) * 2 + 1] = - 2 * epsilon[i]^-1;
+            A[(i - 1) * 2 + 1, (i - 1) * 2 + 2] = 1;
+            A[i * 2, (i - 1) * 2 + 1] = - epsilon[i]^-2;
+            if i > 1
+                A[(i - 1) * 2 + 1, (i - 1) * 2] = 2 * epsilon[i]^-1;
+                A[i * 2, (i - 1) * 2] = epsilon[i]^-2;
+            end
+        end
+        B = - A[:, 1];
+        A[end, end - 1] = epsilon[N]^-1;
+        A[end, end] = - epsilon[N]^-1;
+
+        return A, B;
+    end
+    if hgo_type == UnivEst.CASCADE
+        if length(coeffs) == 0
+            COEFFS_TABLE = [
+                [1.414, 1.0],
+                [5.0, 10.0, 5.0, 2.4],
+                [7.0, 28.0, 7.0, 9.0, 7.0, 2.85714],
+            ];
+            k = COEFFS_TABLE[N - 1];
+        else
+            k = coeffs;
+        end
+
+        tmp_ind = 2 * (N - 1);
+        A = zeros(tmp_ind, tmp_ind);
+        for i = 1:1:Int(round((tmp_ind / 2)))
+            A[(i - 1) * 2 + 1, (i - 1) * 2 + 1] =
+                - k[(i - 1) * 2 + 1] * epsilon[1]^-1;
+            A[(i - 1) * 2 + 1, (i - 1) * 2 + 2] = 1;
+            A[i * 2, (i - 1) * 2 + 1] =
+                - k[(i - 1) * 2 + 2] * epsilon[1]^-2;
+            if i < Int(round((tmp_ind / 2)))
+                A[i * 2, (i - 1) * 2 + 3] = 1;
+            end
+            if i > 1
+                A[(i - 1) * 2 + 1, (i - 1) * 2] =
+                    k[(i - 1) * 2 + 1] * epsilon[1]^-1;
+                A[i * 2, (i - 1) * 2] =
+                    k[(i - 1) * 2 + 2] * epsilon[1]^-2;
+            end
+        end
+        B = - A[:, 1];
+
+        return A, B;
     end
 end

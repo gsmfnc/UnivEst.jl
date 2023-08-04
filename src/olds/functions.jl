@@ -65,7 +65,11 @@ struct dt_training_parameters
     add_loss::Function
 end
 
-#EXPORTED FUNCTIONS#############################################################
+################################################################################
+###########################EXPORTED FUNCTIONS###################################
+################################################################################
+
+######################## FFT FUNCTIONS #########################################
 
 function fft_plot(x::Vector{Float64}, ts::Float64, tfinal::Float64)
     Fs = Int(round(1 / ts));
@@ -102,6 +106,8 @@ function find_peaks_infos(fft_amps::Vector{Float64},
 
     return freqs, amps, phases
 end
+
+######################## SET_XXX_PARAMETER #####################################
 
 function set_env_parameter(env::training_parameters, param::String,
         new_value::Any)
@@ -185,8 +191,11 @@ function set_dt_env_parameter(env::dt_training_parameters, param::String,
     return new_env;
 end
 
+######################## INIT_ENV ##############################################
+
 function init_env(phi::Function, data::Matrix{Float64}, t0::Float64,
-        tf::Float64, ts::Float64, opt;
+        tf::Float64, ts::Float64;
+        opt::Function = ADAM(1e-02),
         reltol::Float64 = 1e-8, abstol::Float64 = 1e-8)
 
     blank(a, b, c) = [];
@@ -198,44 +207,21 @@ function init_env(phi::Function, data::Matrix{Float64}, t0::Float64,
 end
 
 function init_env(phi::Function, y_samples::Vector{Float64},
-        t0::Float64, tf::Float64, ts::Float64, opt, n, l;
+        t0::Float64, tf::Float64, ts::Float64, n, l;
+        opt::Function = ADAM(1e-02),
         reltol::Float64 = 1e-8, abstol::Float64 = 1e-8)
 
     blank(a, b, c) = [];
     blank2(env, u, p, u0) = 0;
     env = training_parameters(t0, ts, tf, phi, randn(n), randn(l), blank, blank,
-        y_samples, opt, [reltol, abstol], 0.0, zeros(1, 1), 0, 0.0, blank2);
-
-    return env;
-end
-
-function init_env(phi::Function, data::Matrix{Float64},
-        t0::Float64, tf::Float64, ts::Float64, opt, n, l;
-        reltol::Float64 = 1e-8, abstol::Float64 = 1e-8)
-
-    blank(a, b, c) = [];
-    blank2(env, u, p, u0) = 0;
-    env = training_parameters(t0, ts, tf, phi, randn(n), randn(l), blank, blank,
-        data[1, :], opt, [reltol, abstol], 0.0, data, 0, 0.0, blank2);
-
-    return env;
-end
-
-function init_env(phi::Function, u0::Vector{Float64}, p::Vector{Float64},
-        t0::Float64, tf::Float64, ts::Float64, opt;
-        reltol::Float64 = 1e-8, abstol::Float64 = 1e-8)
-
-    y_samples = get_output_samples(phi, u0, p, t0, tf, ts, [reltol, abstol]);
-    blank(a, b, c) = [];
-    blank2(env, u, p, u0) = 0;
-    env = training_parameters(t0, ts, tf, phi, u0, p, blank, blank,
         y_samples, opt, [reltol, abstol], 0.0, zeros(1, 1), 0, 0.0, blank2);
 
     return env;
 end
 
 function init_env(f::Function, O::Function, y_samples::Vector{Float64},
-        t0::Float64, tf::Float64, ts::Float64, opt, n, l;
+        t0::Float64, tf::Float64, ts::Float64, n, l;
+        opt::Function = ADAM(1e-02),
         reltol::Float64 = 1e-8, abstol::Float64 = 1e-8)
 
     blank(a, b, c) = [];
@@ -246,21 +232,23 @@ function init_env(f::Function, O::Function, y_samples::Vector{Float64},
     return env;
 end
 
-function init_env(f::Function, O::Function, u0::Vector{Float64},
-        p::Vector{Float64}, t0::Float64, tf::Float64, ts::Float64, opt;
+function init_env(phi::Function, data::Matrix{Float64},
+        t0::Float64, tf::Float64, ts::Float64, n, l;
+        opt::Function = ADAM(1e-02),
         reltol::Float64 = 1e-8, abstol::Float64 = 1e-8)
 
-    y_samples = get_output_samples(f, O, u0, p, t0, tf, ts, [reltol, abstol]);
     blank(a, b, c) = [];
     blank2(env, u, p, u0) = 0;
-    env = training_parameters(t0, ts, tf, blank, u0, p, f, O, y_samples, opt,
-        [reltol, abstol], 0.0, zeros(1, 1), 0, 0.0, blank2);
+    env = training_parameters(t0, ts, tf, phi, randn(n), randn(l), blank, blank,
+        data[1, :], opt, [reltol, abstol], 0.0, data, 0, 0.0, blank2);
 
     return env;
 end
 
 function init_env(y_samples::Vector{Float64}, t0::Float64, tf::Float64,
-        ts::Float64, opt; reltol::Float64 = 1e-8, abstol::Float64 = 1e-8)
+        ts::Float64;
+        opt::Function = ADAM(1e-02),
+        reltol::Float64 = 1e-8, abstol::Float64 = 1e-8)
 
     blank(a, b, c) = [];
     blank2(env, u, p, u0) = 0;
@@ -269,6 +257,38 @@ function init_env(y_samples::Vector{Float64}, t0::Float64, tf::Float64,
 
     return env;
 end
+
+#function init_env(phi::Function, u0::Vector{Float64}, p::Vector{Float64},
+#        t0::Float64, tf::Float64, ts::Float64;
+#        opt::Function = ADAM(1e-02),
+#        reltol::Float64 = 1e-8, abstol::Float64 = 1e-8)
+#
+#    y_samples, x_samples =
+#        get_output_samples(phi, u0, p, t0, tf, ts, [reltol, abstol]);
+#    blank(a, b, c) = [];
+#    blank2(env, u, p, u0) = 0;
+#    env = training_parameters(t0, ts, tf, phi, u0, p, blank, blank,
+#        y_samples, opt, [reltol, abstol], 0.0, zeros(1, 1), 0, 0.0, blank2);
+#
+#    return env;
+#end
+
+#function init_env(f::Function, O::Function, u0::Vector{Float64},
+#        p::Vector{Float64}, t0::Float64, tf::Float64, ts::Float64;
+#        opt::Function = ADAM(1e-02),
+#        reltol::Float64 = 1e-8, abstol::Float64 = 1e-8)
+#
+#    y_samples, x_samples =
+#        get_output_samples(f, O, u0, p, t0, tf, ts, [reltol, abstol]);
+#    blank(a, b, c) = [];
+#    blank2(env, u, p, u0) = 0;
+#    env = training_parameters(t0, ts, tf, blank, u0, p, f, O, y_samples, opt,
+#        [reltol, abstol], 0.0, zeros(1, 1), 0, 0.0, blank2);
+#
+#    return env;
+#end
+
+######################## INIT_GAIN_ENV #########################################
 
 function init_gain_env(phi::Function, u0::Vector{Float64}, hp::Vector{Float64},
         hu0::Matrix{Float64}, t0::Float64, tf::Float64, ts::Float64, opt;
@@ -285,6 +305,8 @@ function init_gain_env(phi::Function, u0::Vector{Float64}, hp::Vector{Float64},
         hgo_type, gain_type, coeffs, d, opt, [reltol, abstol], blank2, blank);
 end
 
+######################## INIT_CTRL_ENV #########################################
+
 function init_ctrl_env(alpha::Float64, beta::Float64, gamma::Float64,
         data::Matrix{Float64}, f::Function, u::Function;
         reltol::Float64 = 1e-8, abstol::Float64 = 1e-8)
@@ -292,6 +314,8 @@ function init_ctrl_env(alpha::Float64, beta::Float64, gamma::Float64,
     env = ctrl_training_parameters(alpha, beta, gamma, data, f, u,
         [reltol, abstol]);
 end
+
+######################## INIT_DT_ENV ###########################################
 
 function init_dt_env(f::Function, h::Function, n::Int64, opt,
         y_samples::Matrix{Float64})
@@ -301,6 +325,8 @@ function init_dt_env(f::Function, h::Function, n::Int64, opt,
 
     return env;
 end
+
+######################## GET_SYS_SOLUTION ######################################
 
 function get_sys_solution(env::training_parameters)
     if env.f(env.u0, env.p, 0) == []
@@ -330,6 +356,8 @@ function get_sys_solution(env::training_parameters, p::Vector{Float64},
     sol = get_sol(f, u0, p, env.t0, env.tf, env.ts, env.tolerances)
 end
 
+######################## GET_LYAPUNOV_DERIVATIVE_VALUES ########################
+
 function get_lyapunov_derivative_values(env::ctrl_training_parameters,
         data::Matrix{Float64}, p::Vector{Float64})
 
@@ -345,6 +373,8 @@ function get_lyapunov_derivative_values(env::ctrl_training_parameters,
     return dV_values;
 end
 
+######################## GET_CTRL_SOL ##########################################
+
 function get_ctrl_sol(env::ctrl_training_parameters, estp::Vector{Float64},
         u0::Vector{Float64}, tf::Float64)
     f(x, p, t) = env.f(x, p);
@@ -359,6 +389,8 @@ function get_ctrl_sol(env::ctrl_training_parameters, estp::Vector{Float64},
 
     return sol.t, sol[:, :], u_vals
 end
+
+######################## GET_DT_SYS_SOL ########################################
 
 function get_dt_sys_sol(env::dt_training_parameters, estp::Vector{Float64},
         u0::Vector{Float64}, steps::Int64)
@@ -382,6 +414,54 @@ function get_dt_sys_sol(f::Function, estp::Vector{Float64},
     return sol;
 end
 
+############################ GET_SOL ###########################################
+
+function get_sol(phi::Function, u0::Vector{Float64}, p::Vector{Float64},
+        t0::Float64, tf::Float64, ts::Float64, tolerances::Vector{Float64})
+    f = get_system_dynamics(phi, u0, p);
+    return get_sol(f, u0, p, t0, tf, ts, tolerances)
+end
+
+function get_sol(f, u0::Vector{Float64}, p::Vector{Float64}, t0::Float64,
+        tf::Float64, ts::Float64, tolerances::Vector{Float64})
+    prob = ODEProblem(f, u0, (t0, tf), saveat = range(t0, tf,
+        length = Int(round((tf - t0) / ts))));
+    sol = solve(prob, p = p, abstol = tolerances[1], reltol = tolerances[2],
+        sensealg = InterpolatingAdjoint(autojacvec =
+            ZygoteVJP(allow_nothing = true)));
+    return sol[:, :]
+end
+
+############################ GET_OUTPUT_SAMPLES ################################
+
+function get_output_samples(phi::Function, u0::Vector{Float64},
+        p::Vector{Float64}, t0::Float64, tf::Float64, ts::Float64,
+        tolerances::Vector{Float64})
+    f = get_system_dynamics(phi, u0, p);
+    sol = get_sol(f, u0, p, t0, tf, ts, tolerances);
+    return sol[1, :]
+end
+
+function get_output_samples(sol::Matrix{Float64}, h, t0::Float64, tf::Float64,
+        ts::Float64)
+    output = zeros(length(h(sol[1, :], 0)), size(sol, 2));
+    t = t0:ts:tf;
+    for i = 1:1:(length(t) - 1)
+        output[:, i] = O(sol[:, i], p, t[i]);
+    end
+    return output;
+end
+
+function get_output_samples(f::Function, O::Function, u0::Vector{Float64},
+        p::Vector{Float64}, t0::Float64, tf::Float64, ts::Float64,
+        tolerances::Vector{Float64})
+    sol = get_sol(f, u0, p, t0, tf, ts, tolerances);
+    sol_obs = get_obs_sol(sol, O, u0, p, t0, ts, tf);
+    return sol_obs[1, :]
+end
+
+################################################################################
+###########################UNEXPORTED FUNCTIONS#################################
 ################################################################################
 
 function get_system_dynamics(phi::Function, u0::Vector{Float64},
@@ -396,34 +476,6 @@ function get_system_dynamics(phi::Function, u0::Vector{Float64},
 
     f(u, p, t) = vec(A * u + B * phi(u, p, t));
     return f;
-end
-
-function get_sol(f, u0::Vector{Float64}, p::Vector{Float64}, t0::Float64,
-        tf::Float64, ts::Float64, tolerances::Vector{Float64})
-    prob = ODEProblem(f, u0, (t0, tf), saveat = range(t0, tf,
-        length = Int(round((tf - t0) / ts))));
-    sol = solve(prob, p = p, abstol = tolerances[1], reltol = tolerances[2],
-        sensealg = InterpolatingAdjoint(autojacvec =
-            ZygoteVJP(allow_nothing = true)));
-    sol[:, :]
-end
-
-function get_output_samples(phi::Function, u0::Vector{Float64},
-        p::Vector{Float64}, t0::Float64, tf::Float64, ts::Float64,
-        tolerances::Vector{Float64})
-    f = get_system_dynamics(phi, u0, p);
-
-    sol = get_sol(f, u0, p, t0, tf, ts, tolerances);
-    sol[1, :]
-end
-
-function get_output_samples(f::Function, O::Function, u0::Vector{Float64},
-        p::Vector{Float64}, t0::Float64, tf::Float64, ts::Float64,
-        tolerances::Vector{Float64})
-
-    sol = get_sol(f, u0, p, t0, tf, ts, tolerances);
-    sol_obs = get_obs_sol(sol, O, u0, p, t0, ts, tf);
-    return sol_obs[1, :];
 end
 
 function get_obs_sol(sol::Matrix{Float64}, O::Function, u0::Vector{Float64},
