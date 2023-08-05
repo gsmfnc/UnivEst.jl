@@ -14,3 +14,20 @@ using DelimitedFiles
 writedlm("u_mincascade.csv", u, ',');
 writedlm("z_mincascade.csv", z, ',');
 writedlm("hu_mincascade.csv", hu, ',');
+
+eps = 0.1;
+u, z, hu = test_hgo(jd0, UnivEst.MIN_CASCADE, eps, phi, p,
+    coeffs = [2.0, 2.0, 1.0], S = [1e06, 1e06, 1e06]);
+
+using DelimitedFiles
+writedlm("u_mincascade_nosat.csv", u, ',');
+writedlm("z_mincascade_nosat.csv", z, ',');
+writedlm("hu_mincascade_nosat.csv", hu, ',');
+
+eps = 0.1;
+u, hu = test_hgo(jd0, UnivEst.CLASSICALHGO, eps, phi, p,
+    coeffs = [2.0, 2.0, 1.0]);
+
+using DelimitedFiles
+writedlm("u_hgo.csv", u, ',');
+writedlm("hu_hgo.csv", hu, ',');

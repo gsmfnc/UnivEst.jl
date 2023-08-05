@@ -154,13 +154,13 @@ function get_hgo_matrices(hgo_type::Int, n::Int, coeffs::Vector,
         A = zeros(tmp_ind + 1, tmp_ind + 1);
         for i = 1:1:Int(round((tmp_ind / 2)))
             A[(i - 1) * 2 + 1, (i - 1) * 2 + 1] =
-                - COEFFS_TABLE[i][1] * epsilon[i]^-1;
+                - k[i][1] * epsilon[i]^-1;
             A[(i - 1) * 2 + 1, (i - 1) * 2 + 2] = 1;
-            A[i * 2, (i - 1) * 2 + 1] = - COEFFS_TABLE[i][2] * epsilon[i]^-2;
+            A[i * 2, (i - 1) * 2 + 1] = - k[i][2] * epsilon[i]^-2;
             if i > 1
                 A[(i - 1) * 2 + 1, (i - 1) * 2] =
-                    COEFFS_TABLE[i][1] * epsilon[i]^-1;
-                A[i * 2, (i - 1) * 2] = COEFFS_TABLE[i][2] * epsilon[i]^-2;
+                    k[i][1] * epsilon[i]^-1;
+                A[i * 2, (i - 1) * 2] = k[i][2] * epsilon[i]^-2;
             end
         end
         B = - A[:, 1];
@@ -214,17 +214,31 @@ end
 function test_hgo(sys::system_obs, hgo_type::Int, epsilon::Float64,
         phi::Function, p::Vector{Float64}, d::Function; coeffs::Vector = [],
 		S::Vector = [])
-    if hgo_type == UnivEst.MIN_CASCADE
+    if hgo_type == UnivEst.CLASSICALHGO
         sys_m = length(sys.u0);
-        hgo = get_hgo_dynamics(hgo_type, sys_m - 1, coeffs, epsilon, S, phi, p);
+        hgo = get_hgo_dynamics(hgo_type, sys_m - 1, coeffs, epsilon, phi, p);
         f = get_system_dynamics(sys.phi, sys.u0, sys.p);
-        dynamics(u, p, t) = [
+        dynamics1(u, p, t) = [
             f(u[1:sys_m], p, t)
             hgo(u[(sys_m + 1):end], u[1] + d(t), t)
         ];
 
 		u0 = [sys.u0; vec(zeros(sys_m, 1))];
-		sol = get_sol(dynamics, u0, sys.p, sys.t0, sys.tf, sys.ts,
+		sol = get_sol(dynamics1, u0, sys.p, sys.t0, sys.tf, sys.ts,
+			sys.tolerances);
+        return sol[1:sys_m, :], sol[(sys_m + 1):end, :];
+    end
+    if hgo_type == UnivEst.MIN_CASCADE
+        sys_m = length(sys.u0);
+        hgo = get_hgo_dynamics(hgo_type, sys_m - 1, coeffs, epsilon, S, phi, p);
+        f = get_system_dynamics(sys.phi, sys.u0, sys.p);
+        dynamics2(u, p, t) = [
+            f(u[1:sys_m], p, t)
+            hgo(u[(sys_m + 1):end], u[1] + d(t), t)
+        ];
+
+		u0 = [sys.u0; vec(zeros(sys_m, 1))];
+		sol = get_sol(dynamics2, u0, sys.p, sys.t0, sys.tf, sys.ts,
 			sys.tolerances);
         u = sol[1:sys_m, :];
         z = sol[(sys_m + 1):end, :];
@@ -236,7 +250,7 @@ function test_hgo(sys::system_obs, hgo_type::Int, epsilon::Float64,
         phi::Function, p::Vector{Float64}, d::Function, d_sys::Function,
 		d_sys_u0::Vector{Float64}; coeffs::Vector = [],
 		S::Vector = [])
-	
+    print("Not implemented.")
 end
 
 ################################################################################
@@ -245,6 +259,8 @@ end
 """
 	get_hgo_dynamics(hgo_type::Int, n::Int, coeffs::Vector,
         epsilon::Vector{Float64})
+    get_hgo_dynamics(hgo_type::Int, n::Int, coeffs::Vector,
+        epsilon::Float64, phi::Function, p::Vector{Float64})
 	get_hgo_dynamics(hgo_type::Int, n::Int, coeffs::Vector,
         epsilon::Vector{Float64}, S::Vector, phi::Function,
 		p::Vector{Float64})
@@ -270,11 +286,18 @@ function get_hgo_dynamics(hgo_type::Int, n::Int, coeffs::Vector,
     end
 end
 function get_hgo_dynamics(hgo_type::Int, n::Int, coeffs::Vector,
+        epsilon::Float64, phi::Function, p::Vector{Float64})
+    N = n + 1;
+    A, B = get_hgo_matrices(hgo_type, n, coeffs, [epsilon]);
+    H = zeros(N, 1);
+    H[end] = 1;
+    hgo(u, y, t) = vec(A * u + B * y + H * phi(u, p, t));
+    return hgo;
+end
+function get_hgo_dynamics(hgo_type::Int, n::Int, coeffs::Vector,
         epsilon::Float64, S::Vector, phi::Function,
 		p::Vector{Float64})
-    if hgo_type == UnivEst.MIN_CASCADE
-        return get_min_cascade_dynamics(n, coeffs, epsilon, S, phi, p);
-    end
+    return get_min_cascade_dynamics(n, coeffs, epsilon, S, phi, p);
 end
 
 """
@@ -309,7 +332,7 @@ function get_coeffs_table(hgo_type::Int, coeffs::Vector, N::Int)
                 print("You need to provide a coefficient vector\n")
                 return;
             end
-            k = COEFFS_TABLE[N - 1];
+            k = COEFFS_TABLE[1:(N - 1)];
         end
         if hgo_type == UnivEst.CASCADE
             COEFFS_TABLE = [

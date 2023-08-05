@@ -10,7 +10,7 @@ include("structs/init_structs.jl")
 #export get_sys_solution
 include("system_solution/system_solution.jl")
 
-#export bode_hgo, estimate_t_derivatives, get_hgo_matrices
+#export bode_hgo, estimate_t_derivatives, get_hgo_matrices, test_hgo
 include("observers/observers.jl")
 
 struct tmp
