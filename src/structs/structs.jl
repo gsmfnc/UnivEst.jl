@@ -1,3 +1,7 @@
+################################################################################
+#########################EXPORTED STRUCTS#######################################
+################################################################################
+
 """
     struct system_obs
         phi::Function
@@ -20,7 +24,7 @@ Letting n = length(u0), it represents the dynamical system
     dx_{n-1}/dt = x_n
     dx_n/dt = phi(x, p, t)
 
-When getting the solution of the system, it will start integrating from t0 to
+When requesting the solution of the system, it will start integrating from t0 to
 tf and sampling with ts. 'tolerances' is a vector such that
 reltol = tolerances[1] and abstol = tolerances[2].
 """
@@ -35,4 +39,35 @@ struct system_obs
     p::Vector
 
     tolerances::Vector{Float64}
+end
+
+"""
+    struct forward_kinematics
+        forward_kinematics::Function
+
+        t0::Float64
+        ts::Float64
+        tf::Float64
+    end
+
+Represents the forward kinematics of some manipulator.
+'forward_kinematics' has to be a function of three arguments: (_, p, t).
+"""
+struct forward_kinematics
+    forward_kinematics::Function
+
+    t0::Float64
+    ts::Float64
+    tf::Float64
+end
+
+################################################################################
+##############################NOT EXPORTED######################################
+################################################################################
+
+struct fk_training_env
+    fd_kin::forward_kinematics
+
+    tf_train::Float64
+    data::Matrix{Float64}
 end
