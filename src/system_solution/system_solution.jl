@@ -15,6 +15,24 @@ function get_sys_solution(sys::system_obs)
     return sol, output
 end
 
+"""
+    get_periodical_signal_samples(sig, bias::Float64,
+        amps::Vector{Float64}, phases::Vector{Float64}, puls::Vector{Float64})
+
+Returns samples of the periodical signal
+    bias + sum_i amps[i] * sin(puls[i] * t + phases[i])
+"""
+function get_periodical_signal_samples(sig, bias::Float64,
+        amps::Vector{Float64}, phases::Vector{Float64}, puls::Vector{Float64})
+    times = sig.t0:sig.ts:sig.tf;
+    samples = zeros(length(times) - 1, 1);
+    for i = 1:1:length(samples)
+        samples[i] = sig.s(bias, amps, puls, phases, (i - 1) * sig.ts);
+    end
+
+    return samples;
+end
+
 ################################################################################
 #############################NOT EXPORTED#######################################
 ################################################################################

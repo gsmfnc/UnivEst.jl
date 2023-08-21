@@ -52,9 +52,27 @@ end
 
 Represents the forward kinematics of some manipulator.
 'forward_kinematics' has to be a function of three arguments: (_, p, t).
+The first argument, however, has to be unused.
 """
 struct forward_kinematics
     forward_kinematics::Function
+
+   t0::Float64
+    ts::Float64
+    tf::Float64
+end
+
+"""
+    struct periodical_signal
+        s::Function
+
+        t0::Float64
+        ts::Float64
+        tf::Float64
+    end
+"""
+struct periodical_signal
+    s::Function
 
     t0::Float64
     ts::Float64
@@ -70,4 +88,13 @@ struct fk_training_env
 
     tf_train::Float64
     data::Matrix{Float64}
+end
+
+struct freq_training_env
+    s::periodical_signal
+
+    t0::Float64
+    ts::Float64
+    tf_tr::Float64
+    y_samples::Matrix{Float64}
 end

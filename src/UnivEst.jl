@@ -2,10 +2,10 @@ using DifferentialEquations, DiffEqFlux, Optimization, Plots, FFTW, DSP
 using Optim, ControlSystems, ComponentArrays, OptimizationOptimJL
 using OptimizationFlux
 
-#export system_obs, forward_kinematics 
+#export system_obs, forward_kinematics, periodical_signal
 include("structs/structs.jl")
 
-#export init_system_obs, init_forward_kinematics
+#export init_system_obs, init_forward_kinematics, init_periodical_signal
 include("structs/init_structs.jl")
 
 #export evaluate_forward_kinematics
