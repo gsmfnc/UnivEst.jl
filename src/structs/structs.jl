@@ -82,7 +82,14 @@ end
 ################################################################################
 ##############################NOT EXPORTED######################################
 ################################################################################
+"""
+    struct fk_training_env
+        fd_kin::forward_kinematics
 
+        tf_train::Float64
+        data::Matrix{Float64}
+    end
+"""
 struct fk_training_env
     fd_kin::forward_kinematics
 
@@ -90,6 +97,16 @@ struct fk_training_env
     data::Matrix{Float64}
 end
 
+"""
+    struct freq_training_env
+        s::periodical_signal
+
+        t0::Float64
+        ts::Float64
+        tf_tr::Float64
+        y_samples::Matrix{Float64}
+    end
+"""
 struct freq_training_env
     s::periodical_signal
 

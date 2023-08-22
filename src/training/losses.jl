@@ -31,7 +31,7 @@ function loss_freq(p)
     bias = p[end];
 
     d_samples = Int(round(SUPPENV.t0 / SUPPENV.ts)) + 1;
-    N = Int(round(SUPPENV.tf_tr / SUPPENV.ts)) + 1;
+    N = Int(round(SUPPENV.tf_tr / SUPPENV.ts));
 
     vloss = 0;
     for i = d_samples:1:N
