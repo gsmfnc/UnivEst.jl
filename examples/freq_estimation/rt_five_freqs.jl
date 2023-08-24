@@ -17,22 +17,35 @@ plot(samples)
 plot!(noise)
 
 #; Analysis through FFT
+@time begin
 p1, fft_freqs, fft_amps = fft_plot(vec(samples[1:500]), sig.ts, 5.0);
 plot(p1)
 
-no_peaks = 7;
-fft_hpuls, fft_hamps, fft_hphases, fft_hbias =
-    find_peaks_infos(fft_amps, fft_freqs, no_peaks);
+fft_hpuls1, fft_hamps1, fft_hphases1, fft_hbias =
+    find_peaks_infos(fft_amps, fft_freqs, 10);
 
-F = maximum(fft_hpuls / (2 * pi))^-1 / 2; #0.014382022471910113
+no_peaks = 10;
+for i = 10:-1:2
+    if fft_hamps1[i - 1] / fft_hamps1[i] < 0.3
+        no_peaks = i - 1;
+        break
+    end
+end
+fft_hpuls = fft_hpuls1[(no_peaks + 1):end]
+fft_hamps = fft_hamps1[(no_peaks + 1):end]
+fft_hphases = fft_hphases1[(no_peaks + 1):end]
+
+F = maximum(fft_hpuls / (2 * pi))^-1 * 4; #0.4096
+end
 
 #; Training
 hpuls, hphases, hamps, hbias, estps, times =
-    periodical_signal_training(sig, samples, 15.0, varying_iters = [100, 50],
+    periodical_signal_training(sig, samples, 20.0, varying_iters = [200, 100],
     nu = no_peaks, window_size = F, max_window_number = 20,
     varying_adam_p = [0.01, 0.001], save = true, t0 = 5.0,
     hpuls = fft_hpuls, hamps = fft_hamps, hbias = fft_hbias);
 
+[fft_hpuls fft_hamps]
 [hpuls hamps]
 [puls amps]
 
@@ -44,3 +57,9 @@ writedlm("rt_fivefreqs_hamps.csv", hamps, ",")
 writedlm("rt_fivefreqs_hbias.csv", hbias, ",")
 writedlm("rt_fivefreqs_estps.csv", estps, ",")
 writedlm("rt_fivefreqs_times.csv", times, ",")
+writedlm("rt_fivefreqs_fft_freqs.csv", fft_freqs, ",")
+writedlm("rt_fivefreqs_fft_amps.csv", fft_amps, ",")
+writedlm("rt_fivefreqs_fft_hpuls.csv", fft_hpuls, ",")
+writedlm("rt_fivefreqs_fft_hamps.csv", fft_hamps, ",")
+writedlm("rt_fivefreqs_fft_hphases.csv", fft_hphases, ",")
+writedlm("rt_fivefreqs_fft_hbias.csv", fft_hbias, ",")
