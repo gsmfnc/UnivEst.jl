@@ -28,11 +28,12 @@ end
 
 """
     periodical_signal_training(s::periodical_signal, data::Matrix{Float64},
-        tf::Float64, its::Int, hbias::Float64, hamps::Vector{Float64},
-        hphases::Vector{Float64}, hpuls::Vector{Float64};
+        tf::Float64; its::Int = 100, nu::Int = 0,
+        hbias::Float64 = 0.0, hamps::Vector = [],
+        hphases::Vector = [], hpuls::Vector = [],
         window_size::Float64 = 0.0, varying_iters::Vector{Int} = [0, 0],
         opt = Adam(1e-02), max_window_number::Int = 0,
-        varying_adam_p::Vector{Float64} = [])
+        varying_adam_p::Vector = [], save::Bool = false, t0::Float64 = 0.0)
 """
 function periodical_signal_training(s::periodical_signal, data::Matrix{Float64},
         tf::Float64; its::Int = 100, nu::Int = 0,
@@ -40,7 +41,7 @@ function periodical_signal_training(s::periodical_signal, data::Matrix{Float64},
         hphases::Vector = [], hpuls::Vector = [],
         window_size::Float64 = 0.0, varying_iters::Vector{Int} = [0, 0],
         opt = Adam(1e-02), max_window_number::Int = 0,
-        varying_adam_p::Vector = [], save::Bool = false)
+        varying_adam_p::Vector = [], save::Bool = false, t0::Float64 = 0.0)
 
     if nu == 0 && (length(hamps) == 0 || length(hphases == 0) ||
             length(hpuls) == 0)
@@ -61,7 +62,7 @@ function periodical_signal_training(s::periodical_signal, data::Matrix{Float64},
     end
 
     global SUPPENV
-    SUPPENV = freq_training_env(s, s.t0, s.ts, tf, data);
+    SUPPENV = freq_training_env(s, t0 + s.t0, s.ts, tf, data);
 
     estp = vcat(hpuls, hphases, hamps, hbias);
 
@@ -84,7 +85,7 @@ function periodical_signal_training(s::periodical_signal, data::Matrix{Float64},
     new_opt = opt;
 
     N = Int(floor(tf / F));
-    tf_tr = F;
+    tf_tr = SUPPENV.t0 + F;
 
     if save
         times = zeros(N, 1);
@@ -104,7 +105,7 @@ function periodical_signal_training(s::periodical_signal, data::Matrix{Float64},
         if max_window_number != 0
             if i > max_window_number
                 SUPPENV = set_freq_training_val(SUPPENV, "t0",
-                    (i - max_window_number) * F);
+                    t0 + (i - max_window_number) * F);
             end
         end
 
