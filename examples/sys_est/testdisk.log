@@ -1,0 +1,110 @@
+
+
+Thu Aug 31 09:04:38 2023
+Command line: TestDisk
+
+TestDisk 7.1, Data Recovery Utility, July 2019
+Christophe GRENIER <grenier@cgsecurity.org>
+https://www.cgsecurity.org
+OS: Linux, kernel 5.4.0-120-generic (#136-Ubuntu SMP Fri Jun 10 13:40:48 UTC 2022) x86_64
+Compiler: GCC 9.2
+ext2fs lib: 1.45.5, ntfs lib: libntfs-3g, reiserfs lib: none, ewf lib: none, curses lib: ncurses 6.1
+User is not root!
+Hard disk list
+
+
+TestDisk exited normally.
+Using locale 'en_US.UTF-8'.
+
+
+Thu Aug 31 09:04:38 2023
+Command line: TestDisk /debug
+
+TestDisk 7.1, Data Recovery Utility, July 2019
+Christophe GRENIER <grenier@cgsecurity.org>
+https://www.cgsecurity.org
+OS: Linux, kernel 5.4.0-120-generic (#136-Ubuntu SMP Fri Jun 10 13:40:48 UTC 2022) x86_64
+Compiler: GCC 9.2
+ext2fs lib: 1.45.5, ntfs lib: libntfs-3g, reiserfs lib: none, ewf lib: none, curses lib: ncurses 6.1
+/dev/sda: LBA, HPA, LBA48, DCO support
+/dev/sda: size       500118192 sectors
+/dev/sda: user_max   500118192 sectors
+/dev/sda: native_max 500118192 sectors
+Warning: can't get size for Disk /dev/mapper/control - 0 B - 0 sectors, sector size=512
+Warning: can't get size for Disk /dev/loop0 - 0 B - 0 sectors, sector size=512
+Warning: can't get size for Disk /dev/loop1 - 0 B - 0 sectors, sector size=512
+Warning: can't get size for Disk /dev/loop2 - 0 B - 0 sectors, sector size=512
+Warning: can't get size for Disk /dev/loop3 - 0 B - 0 sectors, sector size=512
+Warning: can't get size for Disk /dev/loop4 - 0 B - 0 sectors, sector size=512
+Warning: can't get size for Disk /dev/loop5 - 0 B - 0 sectors, sector size=512
+Warning: can't get size for Disk /dev/loop6 - 0 B - 0 sectors, sector size=512
+Warning: can't get size for Disk /dev/loop7 - 0 B - 0 sectors, sector size=512
+Hard disk list
+Disk /dev/sda - 256 GB / 238 GiB - CHS 31130 255 63, sector size=512 - HFS256G39TND-N210A, S/N:EJ85N47481120576C, FW:30200P10
+
+Partition table type (auto): EFI GPT
+Disk /dev/sda - 256 GB / 238 GiB - HFS256G39TND-N210A
+Partition table type: EFI GPT
+
+Interface Advanced
+hdr_size=92
+hdr_lba_self=1
+hdr_lba_alt=500118191 (expected 500118191)
+hdr_lba_start=34
+hdr_lba_end=500118158
+hdr_lba_table=2
+hdr_entries=128
+hdr_entsz=128
+ 1 P EFI System                  2048    1050623    1048576 [EFI System Partition]
+ 2 P Linux filesys. data      1050624  500117503  499066880
+
+Interface Advanced
+hdr_size=92
+hdr_lba_self=1
+hdr_lba_alt=500118191 (expected 500118191)
+hdr_lba_start=34
+hdr_lba_end=500118158
+hdr_lba_table=2
+hdr_entries=128
+hdr_entsz=128
+ 1 P EFI System                  2048    1050623    1048576 [EFI System Partition]
+ 2 P Linux filesys. data      1050624  500117503  499066880
+
+
+dir_partition inode=2
+ 2 P Linux filesys. data      1050624  500117503  499066880
+Directory /
+       2 drwxr-xr-x     0      0      4096 29-Dec-2022 16:52 .
+       2 drwxr-xr-x     0      0      4096 29-Dec-2022 16:52 ..
+      11 drwx------     0      0     16384 25-Jan-2021 20:48 lost+found
+ 1310721 drwxr-xr-x     0      0      4096  7-Jan-2023 22:33 boot
+      12 -rw-------     0      0 2147483648 25-Jan-2021 20:48 swapfile
+ 4194305 drwxr-xr-x     0      0     12288  8-May-2023 10:28 etc
+ 3538945 drwxr-xr-x     0      0      4096 25-Jan-2021 21:07 media
+      13 lrwxrwxrwx     0      0         7 25-Jan-2021 20:48 bin
+ 6029313 drwxr-xr-x     0      0      4096  3-Jan-2021 17:36 dev
+ 1966081 drwxr-xr-x     0      0      4096 25-Jan-2021 20:58 home
+      14 lrwxrwxrwx     0      0         7 25-Jan-2021 20:48 lib
+      15 lrwxrwxrwx     0      0         9 25-Jan-2021 20:48 lib32
+      16 lrwxrwxrwx     0      0         9 25-Jan-2021 20:48 lib64
+      17 lrwxrwxrwx     0      0        10 25-Jan-2021 20:48 libx32
+ 9437185 drwxr-xr-x     0      0      4096  3-Jan-2021 17:13 mnt
+ 15204353 drwxr-xr-x     0      0      4096 29-Dec-2022 16:52 opt
+ 9043969 drwxr-xr-x     0      0      4096 15-Apr-2020 13:09 proc
+ 12320769 drwx------     0      0      4096 24-Aug-2022 12:14 root
+ 13500417 drwxr-xr-x     0      0      4096 25-Jan-2021 20:58 run
+      18 lrwxrwxrwx     0      0         8 25-Jan-2021 20:48 sbin
+ 12976129 drwxr-xr-x     0      0      4096 29-Dec-2022 16:52 srv
+ 8257537 drwxr-xr-x     0      0      4096 15-Apr-2020 13:09 sys
+ 4063233 drwxrwxrwt     0      0      4096 31-Aug-2023 09:04 tmp
+ 7077889 drwxr-xr-x     0      0      4096  3-Jan-2021 17:12 usr
+ 1572865 drwxr-xr-x     0      0      4096  3-Jan-2021 17:46 var
+ 6160385 drwxr-xr-x     0      0      4096 25-Jan-2021 20:50 cdrom
+X15204353 drwxr-xr-x     0      0      4096 29-Dec-2022 16:52 opt.dpkg-new
+gpt_change_part_type
+Change partition type:
+ 1 P EFI System                  2048    1050623    1048576 [EFI System Partition]
+Change partition type:
+ 1 P Unknown                     2048    1050623    1048576 [EFI System Partition]
+
+TestDisk exited normally.

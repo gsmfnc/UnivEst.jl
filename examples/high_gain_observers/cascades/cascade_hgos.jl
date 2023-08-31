@@ -17,7 +17,7 @@ phi(u, p, t) = p[1] * u[2] + p[2] * u[1] - sinh(u[1]);
 u0 = [-1.22, -0.04, 1.43];
 p = [-5.0, 2.0];
 
-cj3 = init_system_obs(phi, u0, p, t0 = 0.0, tf = 50.0, ts = 1e-02);
+cj3 = init_system_obs(phi, u0, p = p, t0 = 0.0, tf = 50.0, ts = 1e-02);
 d(t) = 0.1 * sin(1e03 * t);
 times = cj3.t0:cj3.ts:(cj3.tf - cj3.ts);
 

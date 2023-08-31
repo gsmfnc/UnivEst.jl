@@ -7,7 +7,7 @@ p = [-2.02, -1.0];
 cj3 = init_system_obs(phi, u0, p, t0 = 0.0, tf = 50.0, ts = 1e-02,
     reltol = 1e-10, abstol = 1e-10);
 times = cj3.t0:cj3.ts:(cj3.tf - cj3.ts);
-lorenz(u, t) = 20 * [
+lorenz(u, p, t) = 20 * [
     u[2] - u[1]
     -u[1] * u[3]
     u[1] * u[2] - 1
