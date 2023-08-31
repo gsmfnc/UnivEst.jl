@@ -4,13 +4,53 @@
 
 """
     get_sys_solution(sys::system_obs)
+    get_sys_solution(sys::system)
 
 Returns the solution of the dynamical system associated with sys.
 """
-function get_sys_solution(sys::system_obs)
-    f = get_system_dynamics(sys.phi, sys.u0, sys.p);
-    sol = get_sol(f, sys.u0, sys.p, sys.t0, sys.tf, sys.ts, sys.tolerances);
+function get_sys_solution(sys::system_obs;
+        p_arg::Vector = [], u0_arg::Vector = [])
+    if length(p_arg) == 0
+        p = sys.p;
+    else
+        p = p_arg;
+    end
+    if length(u0_arg) == 0
+        u0 = sys.u0;
+    else
+        u0 = u0_arg;
+    end
+
+    f = get_system_dynamics(sys.phi, u0, p);
+    sol = get_sol(f, u0, p, sys.t0, sys.tf, sys.ts, sys.tolerances);
     output = sol[1, :];
+
+    return sol, output
+end
+function get_sys_solution(sys::system;
+        p_arg::Vector = [], u0_arg::Vector = [], p_h_arg::Vector = [])
+    if length(p_arg) == 0
+        p = sys.p;
+    else
+        p = p_arg;
+    end
+    if length(u0_arg) == 0
+        u0 = sys.u0;
+    else
+        u0 = u0_arg;
+    end
+    if length(p_h_arg) == 0
+        p_h = sys.p_h;
+    else
+        p_h = p_h_arg;
+    end
+
+    sol = get_sol(sys.f, u0, p, sys.t0, sys.tf, sys.ts, sys.tolerances);
+    N = size(sol, 2);
+    output = zeros(N, 1);
+    for i = 1:1:N
+        output[i] = sys.h(sol[:, i], p_h, (i - 1) * sys.ts);
+    end
 
     return sol, output
 end
@@ -73,4 +113,30 @@ function get_sol(f, u0::Vector{Float64}, p::Vector{Float64}, t0::Float64,
         sensealg = InterpolatingAdjoint(autojacvec =
             ZygoteVJP(allow_nothing = true)));
     return sol[:, :]
+end
+
+"""
+    fixed_rk4(f, u0::Vector{Float64}, p::Vector{Float64}, t0::Float64,
+        tf::Float64, ts::Float64)
+
+Implementation of the fixed-step Runge-Kutta 4th order algorithm.
+"""
+function fixed_rk4(f, u0::Vector{Float64}, p::Vector{Float64}, t0::Float64,
+        tf::Float64, ts::Float64)
+    times = t0:ts:(tf - ts);
+    N = length(times);
+
+    sol = zeros(length(u0), N);
+    x = u0;
+    for i = 2:1:N
+        t = (i - 1) * ts;
+        k1 = ts * f(x, p, t);
+        k2 = ts * f(x + k1 / 2, p, t);
+        k3 = ts * f(x + k2 / 2, p, t);
+        k4 = ts * f(x + k3, p, t);
+        x = x + (k1 + 2*k2 + 2*k3 + k4)/6;
+        sol[:, i] = x;
+    end
+
+    return sol;
 end

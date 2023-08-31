@@ -2,6 +2,160 @@
 #######################EXPORTED FUNCTIONS#######################################
 ################################################################################
 """
+    sys_training(sys::system, data::Matrix{Float64}, tfs::Vector{Float64},
+        its::Int;
+        estu0::Vector = [], estp0::Vector = [], opt = Adam(1e-02),
+        dtime::Float64 = 0.0, save::Bool = false,
+        callback::Bool = false, batch_size::Float64 = 0.0, batch_no::Int = 0)
+"""
+function sys_training(sys::system, data::Matrix{Float64}, tfs::Vector{Float64},
+        its::Int;
+        estu0::Vector = [], estp0::Vector = [], opt = Adam(1e-02),
+        dtime::Float64 = 0.0, save::Bool = false,
+        callback::Bool = false, batch_size::Float64 = 0.0, batch_no::Int = 0)
+    if batch_size == 0.0 && batch_no == 0
+        lossf = loss_sys;
+		batch_indexes = [0];
+    else
+        lossf = batch_loss_sys;
+		maxN = Int(round(tfs[1] / sys.ts));
+		batch_size_i = Int(round(batch_size / sys.ts));
+		indx = rand(1:(maxN - batch_size_i), 1, batch_no);
+
+		batch_indexes = indx[1]:(indx[1] + batch_size_i - 1);
+		for i = 2:length(indx)
+			batch_indexes = vcat(batch_indexes,
+				indx[i]:(indx[i] + batch_size_i - 1));
+		end
+		batch_indexes = sort(batch_indexes);
+    end
+
+    d_samples = Int(round((dtime - sys.t0) / sys.ts)) + 1;
+    mxs = maximum(abs, data[d_samples:end, :], dims = 1);
+
+    global SUPPENV
+    SUPPENV = sys_training_env(sys.f, sys.h, sys.obs_map, length(sys.u0),
+        sys.t0, sys.tf, sys.ts, sys.tolerances, d_samples, data,
+		vec(batch_indexes), mxs);
+
+    if length(estu0) == 0
+        estu0 = vec(randn(1, length(sys.u0)) * 1e-02);
+    end
+    if length(estp0) == 0
+        estp0 = vec(randn(1, length(sys.p)) * 1e-02);
+    end
+
+    estp = vcat(estu0, estp0);
+
+    open("TRAININGSAVE.CSV", "w") do io
+        writedlm(io, "_")
+        writedlm(io, estp')
+    end
+
+    N = length(tfs);
+    if save
+        times = zeros(N, 1);
+        estps = zeros(length(estp), N);
+    end
+
+    for i = 1:1:length(tfs)
+        SUPPENV = set_sys_training_env_val(SUPPENV, "tf_tr", tfs[i]);
+
+        if save
+            if !callback
+                times[i] = @elapsed estp =
+                    optimize_loss(estp, lossf, opt, its)
+            else
+                times[i] = @elapsed estp =
+                    optimize_loss(estp, lossf, opt, its, callback = callback)
+            end
+            estps[:, i] = estp;
+        else
+            if !callback
+                estp = optimize_loss(estp, lossf, opt, its);
+            else
+                estp = optimize_loss(estp, lossf, opt, its,
+                    callback = callback);
+            end
+        end
+    end
+
+    if save
+        return estp[1:length(sys.u0)], estp[(length(sys.u0) + 1):end], times,
+            estps;
+    else
+        return estp[1:length(sys.u0)], estp[(length(sys.u0) + 1):end];
+    end
+end
+
+"""
+    sysobs_training(sys::system_obs, data::Matrix{Float64},
+        tfs::Vector{Float64}, its::Int;
+        estu0::Vector = [], estp0::Vector = [], opt = Adam(1e-02),
+        dtime::Float64 = 0.0, save::Bool = false, callback::Bool = false)
+"""
+function sysobs_training(sys::system_obs, data::Matrix{Float64},
+        tfs::Vector{Float64}, its::Int;
+        estu0::Vector = [], estp0::Vector = [], opt = Adam(1e-02),
+        dtime::Float64 = 0.0, save::Bool = false, callback::Bool = false)
+    global SUPPENV
+    f = get_system_dynamics(sys.phi, sys.u0, sys.p);
+    d_samples = Int(round((dtime - sys.t0) / sys.ts)) + 1;
+    SUPPENV = sysobs_training_env(f, sys.obs_map, length(sys.u0), sys.t0,
+        sys.tf, sys.ts, sys.tolerances, d_samples, data);
+
+    if length(estu0) == 0
+        estu0 = vec(randn(1, length(sys.u0)) * 1e-02);
+    end
+    if length(estp0) == 0
+        estp0 = vec(randn(1, length(sys.p)) * 1e-02);
+    end
+
+    estp = vcat(estu0, estp0);
+
+    open("TRAININGSAVE.CSV", "w") do io
+        writedlm(io, "_");
+        writedlm(io, estp');
+    end
+
+    N = length(tfs);
+    if save
+        times = zeros(N, 1);
+        estps = zeros(length(estp), N);
+    end
+
+    for i = 1:1:length(tfs)
+        SUPPENV = set_sysobs_training_env_val(SUPPENV, "tf_tr", tfs[i]);
+
+        if save
+            if !callback
+                times[i] = @elapsed estp =
+                    optimize_loss(estp, loss_sysobs, opt, its);
+            else
+                times[i] = @elapsed estp =
+                    optimize_loss(estp, loss_sysobs, opt, its,
+                        callback = callback);
+            end
+            estps[:, i] = estp;
+        else
+            if !callback
+                estp = optimize_loss(estp, loss_sysobs, opt, its);
+            else
+                estp = optimize_loss(estp, loss_sysobs, opt, its,
+                    callback = callback);
+            end
+        end
+    end
+
+    if save
+        return estp[1:length(sys.u0)], estp[(length(sys.u0) + 1):end], times,
+            estps;
+    else
+        return estp[1:length(sys.u0)], estp[(length(sys.u0) + 1):end];
+    end
+end
+
+"""
     fd_kin_training(fd_kin::forward_kinematics, data::Matrix{Float64},
         tfs::Vector{Float64}, its::Int, estp::Vector{Float64};
         opt::Function = Adam(1e-02))
@@ -156,22 +310,46 @@ end
         its::Int)
 """
 function optimize_loss(estp::Vector{Float64}, loss_func::Function, opt,
-        its::Int)
+        its::Int; callback::Bool = false)
     pinit = ComponentArray(estp);
     adtype = Optimization.AutoZygote();
     optf = Optimization.OptimizationFunction((x, p) -> loss_func(x),
         adtype);
     optprob = Optimization.OptimizationProblem(optf, pinit);
 
-    @time begin
-    res = Optimization.solve(optprob,
-                            opt,
-                            maxiters = its);
+    if !callback
+        @time begin
+        res = Optimization.solve(optprob,
+                                opt,
+                                maxiters = its);
+        end
+    else
+        @time begin
+        res = Optimization.solve(optprob,
+                                opt,
+                                maxiters = its,
+                                callback = default_callback);
+        end
     end
     estp = res.u;
+
     open("TRAININGSAVE.CSV", "a") do io
         writedlm(io, "_")
         writedlm(io, estp')
     end
+
     return estp
+end
+
+"""
+    default_callback(p, l, pred)
+"""
+function default_callback(p, l, pred)
+    println("p = ", p)
+    println("loss = ", l)
+    plt = plot(SUPPENV.data[:, 1])
+    plt = plot!(pred[1, :])
+    display(plt)
+
+    return false;
 end

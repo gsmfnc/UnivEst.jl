@@ -33,13 +33,25 @@ end
 """
     estimate_t_derivatives(sys::system_obs, hgo_type::Int, n::Int,
         epsilon::Vector{Float64};
+        coeffs::Vector = [], gamma::Float64 = 0.0)
     estimate_t_derivatives(sys::system_obs, hgo_type::Int, n::Int,
         epsilon::Vector{Float64}, d::Function;
-        coeffs::Vector = [])
+        coeffs::Vector = [], gamma::Float64 = 0.0)
     estimate_t_derivatives(sys::system_obs, hgo_type::Int, n::Int,
         epsilon::Vector{Float64}, d::Function, d_sys::Function,
         d_sys_u0::Vector{Float64};
-        coeffs::Vector = [])
+        coeffs::Vector = [], gamma::Float64 = 0.0)
+
+    estimate_t_derivatives(sys::system, hgo_type::Int, n::Int,
+        epsilon::Vector{Float64};
+        coeffs::Vector = [], gamma::Float64 = 0.0)
+    estimate_t_derivatives(sys::system, hgo_type::Int, n::Int,
+        epsilon::Vector{Float64}, d::Function;
+        coeffs::Vector = [], gamma::Float64 = 0.0)
+    estimate_t_derivatives(sys::system, hgo_type::Int, n::Int,
+        epsilon::Vector{Float64}, d::Function, d_sys::Function,
+        d_sys_u0::Vector{Float64};
+        coeffs::Vector = [], gamma::Float64 = 0.0)
 
 Estimates time derivatives with output corrupted by additive noise (given by
 the function d).
@@ -52,24 +64,17 @@ d_sys.
 """
 function estimate_t_derivatives(sys::system_obs, hgo_type::Int, n::Int,
         epsilon::Vector{Float64};
-        coeffs::Vector = [])
+        coeffs::Vector = [], gamma::Float64 = 0.0)
     d(t) = 0.0;
     return estimate_t_derivatives(sys, hgo_type, n, epsilon, d,
-        coeffs = coeffs);
+        coeffs = coeffs, gamma = gamma);
 end
 function estimate_t_derivatives(sys::system_obs, hgo_type::Int, n::Int,
         epsilon::Vector{Float64}, d::Function;
-        coeffs::Vector = [])
+        coeffs::Vector = [], gamma::Float64 = 0.0)
     N = n + 1;
 
     sys_m = length(sys.u0);
-    hgo = get_hgo_dynamics(hgo_type, n, coeffs, epsilon);
-    f = get_system_dynamics(sys.phi, sys.u0, sys.p);
-    dynamics(u, p, t) = [
-        f(u[1:sys_m], p, t)
-        hgo(u[(sys_m + 1):end], u[1] + d(t))
-    ];
-
     m = 0;
     if hgo_type == UnivEst.CLASSICALHGO
         m = n + 1;
@@ -81,15 +86,33 @@ function estimate_t_derivatives(sys::system_obs, hgo_type::Int, n::Int,
         m = 2 * n;
     end
 
-    u0 = [sys.u0; vec(zeros(m, 1))];
-    sol = get_sol(dynamics, u0, sys.p, sys.t0, sys.tf, sys.ts, sys.tolerances);
-
-    return sol[1:sys_m, :], sol[(sys_m + 1):end, :];
+    hgo = get_hgo_dynamics(hgo_type, n, coeffs, epsilon);
+    f = get_system_dynamics(sys.phi, sys.u0, sys.p);
+    if gamma == 0.0
+        u0 = [sys.u0; vec(zeros(m, 1))];
+        dynamics1(u, p, t) = [
+            f(u[1:sys_m], p, t)
+            hgo(u[(sys_m + 1):end], u[1] + d(t))
+        ];
+        sol = get_sol(dynamics1, u0, sys.p, sys.t0, sys.tf, sys.ts,
+            sys.tolerances);
+        return sol[1:sys_m, :], sol[(sys_m + 1):end, :];
+    else
+        u0 = [sys.u0; vec(zeros(m, 1)); 0.0];
+        dynamics2(u, p, t) = [
+            f(u[1:sys_m], p, t)
+            hgo(u[(sys_m + 1):(end - 1)], u[end])
+            - gamma * (u[end] - u[1] - d(t))
+        ];
+        sol = get_sol(dynamics2, u0, sys.p, sys.t0, sys.tf, sys.ts,
+            sys.tolerances);
+        return sol[1:sys_m, :], sol[(sys_m + 1):(end - 1), :];
+    end
 end
 function estimate_t_derivatives(sys::system_obs, hgo_type::Int, n::Int,
         epsilon::Vector{Float64}, d::Function, d_sys::Function,
         d_sys_u0::Vector{Float64};
-        coeffs::Vector = [])
+        coeffs::Vector = [], gamma::Float64 = 0.0)
     N = n + 1;
     sys_m = length(sys.u0);
     m = 0;
@@ -105,17 +128,121 @@ function estimate_t_derivatives(sys::system_obs, hgo_type::Int, n::Int,
 
     hgo = get_hgo_dynamics(hgo_type, n, coeffs, epsilon);
     f = get_system_dynamics(sys.phi, sys.u0, sys.p);
-    dynamics(u, p, t) = [
-        f(u[1:sys_m], p, t)
-        hgo(u[(sys_m + 1):(sys_m + m)], u[1] + d(u[(sys_m + m + 1):end]))
-        d_sys(u[(sys_m + m + 1):end], t)
-    ];
+    if gamma == 0.0
+        u0 = [sys.u0; vec(zeros(m, 1)); d_sys_u0];
+        dynamics1(u, p, t) = [
+            f(u[1:sys_m], p, t)
+            hgo(u[(sys_m + 1):(sys_m + m)], u[1] + d(u[(sys_m + m + 1):end]))
+            d_sys(u[(sys_m + m + 1):end], t)
+        ];
+        sol = get_sol(dynamics1, u0, sys.p, sys.t0, sys.tf, sys.ts,
+            sys.tolerances);
+        return sol[1:sys_m, :], sol[(sys_m + 1):(sys_m + m), :],
+            sol[(sys_m + m + 1):end, :]
+    else
+        u0 = [sys.u0; vec(zeros(m, 1)); d_sys_u0; 0.0];
+        dynamics2(u, p, t) = [
+            f(u[1:sys_m], p, t)
+            hgo(u[(sys_m + 1):(sys_m + m)], u[end])
+            d_sys(u[(sys_m + m + 1):(end - 1)], t)
+            - gamma * (u[end] - u[1] - d(u[(sys_m + m + 1):(end - 1)]))
+        ];
+        sol = get_sol(dynamics2, u0, sys.p, sys.t0, sys.tf, sys.ts,
+            sys.tolerances);
+        return sol[1:sys_m, :], sol[(sys_m + 1):(sys_m + m), :],
+            sol[(sys_m + m + 1:(end - 1)), :]
+    end
+end
+function estimate_t_derivatives(sys::system, hgo_type::Int, n::Int,
+        epsilon::Vector{Float64};
+        coeffs::Vector = [], gamma::Float64 = 0.0)
+    d(t) = 0.0;
+    return estimate_t_derivatives(sys, hgo_type, n, epsilon, d,
+        coeffs = coeffs, gamma = gamma);
+end
+function estimate_t_derivatives(sys::system, hgo_type::Int, n::Int,
+        epsilon::Vector{Float64}, d::Function;
+        coeffs::Vector = [], gamma::Float64 = 0.0)
+    N = n + 1;
 
-    u0 = [sys.u0; vec(zeros(m, 1)); d_sys_u0];
-    sol = get_sol(dynamics, u0, sys.p, sys.t0, sys.tf, sys.ts, sys.tolerances);
+    sys_m = length(sys.u0);
+    m = 0;
+    if hgo_type == UnivEst.CLASSICALHGO
+        m = n + 1;
+    end
+    if hgo_type == UnivEst.M_CASCADE
+        m = 2 * n + 1;
+    end
+    if hgo_type == UnivEst.CASCADE
+        m = 2 * n;
+    end
 
-    return sol[1:sys_m, :], sol[(sys_m + 1):(sys_m + m), :],
-        sol[(sys_m + m + 1:end), :]
+    hgo = get_hgo_dynamics(hgo_type, n, coeffs, epsilon);
+    if gamma == 0.0
+        dynamics1(u, p, t) = [
+            sys.f(u[1:sys_m], p, t)
+            hgo(u[(sys_m + 1):end], sys.h(u[1:sys_m], p, t) + d(t))
+        ];
+        u0 = [sys.u0; vec(zeros(m, 1))];
+        sol = get_sol(dynamics1, u0, sys.p, sys.t0, sys.tf, sys.ts,
+            sys.tolerances);
+        return sol[1:sys_m, :], sol[(sys_m + 1):end, :];
+    else
+        dynamics2(u, p, t) = [
+            sys.f(u[1:sys_m], p, t)
+            hgo(u[(sys_m + 1):(end - 1)], u[end])
+            - gamma * (u[end] - sys.h(u[1:sys_m], p, t) - d(t))
+        ];
+        u0 = [sys.u0; vec(zeros(m, 1)); 0.0];
+        sol = get_sol(dynamics2, u0, sys.p, sys.t0, sys.tf, sys.ts,
+            sys.tolerances);
+        return sol[1:sys_m, :], sol[(sys_m + 1):(end - 1), :];
+    end
+end
+function estimate_t_derivatives(sys::system, hgo_type::Int, n::Int,
+        epsilon::Vector{Float64}, d::Function, d_sys::Function,
+        d_sys_u0::Vector{Float64};
+        coeffs::Vector = [], gamma::Float64 = 0.0)
+    N = n + 1;
+    sys_m = length(sys.u0);
+    m = 0;
+    if hgo_type == UnivEst.CLASSICALHGO
+        m = n + 1;
+    end
+    if hgo_type == UnivEst.M_CASCADE
+        m = 2 * n + 1;
+    end
+    if hgo_type == UnivEst.CASCADE
+        m = 2 * n;
+    end
+
+    hgo = get_hgo_dynamics(hgo_type, n, coeffs, epsilon);
+    if gamma == 0.0
+        dynamics1(u, p, t) = [
+            sys.f(u[1:sys_m], p, t)
+            hgo(u[(sys_m + 1):(sys_m + m)], sys.h(u[1:sys_m], p, t) +
+                d(u[(sys_m + m + 1):end]))
+            d_sys(u[(sys_m + m + 1):end], t)
+        ];
+        u0 = [sys.u0; vec(zeros(m, 1)); d_sys_u0];
+        sol = get_sol(dynamics1, u0, sys.p, sys.t0, sys.tf, sys.ts,
+            sys.tolerances);
+        return sol[1:sys_m, :], sol[(sys_m + 1):(sys_m + m), :],
+            sol[(sys_m + m + 1:end), :]
+    else
+        dynamics2(u, p, t) = [
+            sys.f(u[1:sys_m], p, t)
+            hgo(u[(sys_m + 1):(sys_m + m)], u[end])
+            d_sys(u[(sys_m + m + 1):(end - 1)], t)
+            - gamma * (u[end] - sys.h(u[1:sys_m], p, t) -
+                d(u[(sys_m + m + 1):(end - 1)]));
+        ];
+        u0 = [sys.u0; vec(zeros(m, 1)); d_sys_u0; 0.0];
+        sol = get_sol(dynamics2, u0, sys.p, sys.t0, sys.tf, sys.ts,
+            sys.tolerances);
+        return sol[1:sys_m, :], sol[(sys_m + 1):(sys_m + m), :],
+            sol[(sys_m + m + 1:(end - 1)), :]
+    end
 end
 
 """

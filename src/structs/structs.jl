@@ -1,7 +1,6 @@
 ################################################################################
 #########################EXPORTED STRUCTS#######################################
 ################################################################################
-
 """
     struct system_obs
         phi::Function
@@ -14,6 +13,8 @@
         p::Vector
 
         tolerances::Vector{Float64}
+
+        obs_map::Function
     end
 
 Letting n = length(u0), it represents the dynamical system
@@ -27,6 +28,7 @@ Letting n = length(u0), it represents the dynamical system
 When requesting the solution of the system, it will start integrating from t0 to
 tf and sampling with ts. 'tolerances' is a vector such that
 reltol = tolerances[1] and abstol = tolerances[2].
+'obs_map' ...
 """
 struct system_obs
     phi::Function
@@ -37,6 +39,49 @@ struct system_obs
 
     u0::Vector
     p::Vector
+
+    tolerances::Vector{Float64}
+
+    obs_map::Function
+end
+
+"""
+    struct system
+        f::Function
+        h::Function
+        obs_map::Function
+
+        t0::Float64
+        ts::Float64
+        tf::Float64
+
+        u0::Vector
+        p::Vector
+        p_h::Vector
+
+        tolerances::Vector{Float64}
+    end
+
+It represents the dynamical system dx/dt = f(x, p, t), y = h(x, p_h, t).
+
+When requesting the solution of the system, it will start integrating from t0 to
+tf and sampling with ts.
+'tolerances' is a vector such that reltol = tolerances[1] and
+abstol = tolerances[2].
+'obs_map' ...
+"""
+struct system
+    f::Function
+    h::Function
+    obs_map::Function
+
+    t0::Float64
+    ts::Float64
+    tf::Float64
+
+    u0::Vector
+    p::Vector
+    p_h::Vector
 
     tolerances::Vector{Float64}
 end
@@ -82,6 +127,80 @@ end
 ################################################################################
 ##############################NOT EXPORTED######################################
 ################################################################################
+"""
+    struct sys_training_env
+        f::Function
+        h::Function
+        obs_map::Function
+
+        n::Int
+
+        t0::Float64
+        tf_tr::Float64
+        ts::Float64
+        tolerances::Vector{Float64}
+
+        d_samples::Int
+
+        data::Matrix{Float64}
+
+        batch_indexes::Vector{Int}
+
+        mxs::Matrix{Float64}
+    end
+"""
+struct sys_training_env
+    f::Function
+    h::Function
+    obs_map::Function
+
+    n::Int
+
+    t0::Float64
+    tf_tr::Float64
+    ts::Float64
+    tolerances::Vector{Float64}
+
+    d_samples::Int
+
+    data::Matrix{Float64}
+
+    batch_indexes::Vector{Int}
+
+    mxs::Matrix{Float64}
+end
+
+"""
+    struct sysobs_training_env
+        f::Function
+        obs_map::Function
+        n::Int
+
+        t0::Float64
+        tf_tr::Float64
+        ts::Float64
+        tolerances::Vector{Float64}
+
+        d_samples::Int
+
+        data::Matrix{Float64}
+    end
+"""
+struct sysobs_training_env
+    f::Function
+    obs_map::Function
+    n::Int
+
+    t0::Float64
+    tf_tr::Float64
+    ts::Float64
+    tolerances::Vector{Float64}
+
+    d_samples::Int
+
+    data::Matrix{Float64}
+end
+
 """
     struct fk_training_env
         fd_kin::forward_kinematics

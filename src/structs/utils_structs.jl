@@ -26,6 +26,59 @@ end
 ########################NOT EXPORTED############################################
 ################################################################################
 """
+    set_sys_training_env_val(env::sys_training_env, param::String,
+        new_value::Any)
+
+Sets the 'param' field of 'env' to 'new_value' and returns a new
+sys_training_env object.
+"""
+function set_sys_training_env_val(env::sys_training_env, param::String,
+        new_value::Any)
+    labels = ["f", "h", "obs_map", "n", "t0", "tf_tr", "ts", "tolerances",
+        "d_samples", "data", "batch_indexes", "mxs"];
+
+    arguments_array = [env.f, env.h, env.obs_map, env.n, env.t0, env.tf_tr,
+        env.ts, env.tolerances, env.d_samples, env.data, env.batch_indexes,
+        env.mxs];
+    for i = 1:1:length(labels)
+        if labels[i] == param
+            arguments_array[i] = new_value;
+        end
+    end
+
+    a = arguments_array;
+    new_env = sys_training_env(a[1], a[2], a[3], a[4], a[5], a[6], a[7],
+        a[8], a[9], a[10], a[11], a[12]);
+    return new_env;
+end
+
+"""
+    set_sysobs_training_env_val(env::sys_training_env, param::String,
+        new_value::Any)
+
+Sets the 'param' field of 'env' to 'new_value' and returns a new
+sysobs_training_env object.
+"""
+function set_sysobs_training_env_val(env::sysobs_training_env, param::String,
+        new_value::Any)
+    labels = ["f", "obs_map", "n", "t0", "tf_tr", "ts", "tolerances",
+        "d_samples", "data"];
+
+    arguments_array = [env.f, env.obs_map, env.n, env.t0, env.tf_tr, env.ts,
+        env.tolerances, env.d_samples, env.data];
+    for i = 1:1:length(labels)
+        if labels[i] == param
+            arguments_array[i] = new_value;
+        end
+    end
+
+    a = arguments_array;
+    new_env = sysobs_training_env(a[1], a[2], a[3], a[4], a[5], a[6], a[7],
+        a[8], a[9]);
+    return new_env;
+end
+
+"""
     set_fk_training_val(env::fk_training_env, param::String,
         new_value::Any)
 
