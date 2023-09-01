@@ -58,7 +58,8 @@ the function d).
 'd' has to be a function with one argument.
 'd', 'd_sys' and 'd_sys_u0' can be used to generate a disturbance that is given
 by a dynamical system d_sys from the initial condition d_sys_u0 and d is the
-output function.
+output function (d and d_sys must be functions with one and two arguments
+respectively, e.g., d(u), d_sys(u, t)).
 Returns the system sys solution, the estimated derivatives and the state of
 d_sys.
 """

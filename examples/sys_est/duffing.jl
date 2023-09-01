@@ -44,6 +44,15 @@ hu0, hp, times, estps = sysobs_training(duff, samples, tfs, 300, save = true,
     opt = Adam(1e-04));
 estps0 = hcat(estps0, estps);
 
+tfs = [50.0];
+hu0, hp, times, estps = sysobs_training(duff, samples, tfs, 1000, save = true,
+    estu0 = estps0[1:2, end], estp0 = estps0[3:end, end], callback = true,
+    opt = Adam(1e-04));
+estps0 = hcat(estps0, estps);
+
+hu0 = [-0.89692, 3.95929];
+hp = [0.989977, -0.9989, 1.00302, -0.992544, -0.800269];
+
 duff_hsol, duff_hy =
     get_sys_solution(duff, u0_arg = hu0, p_arg = hp);
 plot(duff_y)
