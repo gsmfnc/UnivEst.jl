@@ -1,4 +1,51 @@
 """
+    loss_gain(p)
+
+Loss function to estimate parameters in time-varying gain.
+"""
+function loss_gain(p)
+    N = size(SUPPENV.ics, 1);
+    vloss = 0.0;
+    sol = 0;
+    for i = 1:1:N
+        u0 = vcat(SUPPENV.ics[i, :], zeros(SUPPENV.n, 1));
+        sol = get_sol(SUPPENV.f, vec(u0), p, SUPPENV.t0, SUPPENV.tf, SUPPENV.ts,
+            SUPPENV.tolerances);
+
+        if SUPPENV.hgo_type == UnivEst.MIN_CASCADE
+            x = sol[1:SUPPENV.n, :];
+            z = sol[(SUPPENV.n + 1):(2 * SUPPENV.n), :];
+
+            gain_func = get_gain_func(SUPPENV.gain_type);
+            for i = SUPPENV.d_samples:1:size(z, 2)
+                hx2 = get_mincascade_estimates(SUPPENV.n,
+                    gain_func(p, (i - 1) * SUPPENV.ts), SUPPENV.coeffs,
+                    SUPPENV.S, z[:, i]);
+                vloss = vloss + sum(abs.(sol[1:SUPPENV.n, i] - hx2));
+            end
+        else
+            for i = SUPPENV.d_samples:1:size(sol, 2)
+                vloss = vloss + sum(abs.(sol[1:SUPPENV.n, i] -
+                    sol[(SUPPENV.n + 1):(2 * SUPPENV.n), i]));
+            end
+        end
+    end
+    factor = (size(sol, 2) - SUPPENV.d_samples) * N;
+
+    if length(p) == 4
+        vloss = factor^-1 * vloss + p[1]^-1 + 0 * p[2] + p[3]^-1 + 0 * p[4];
+    end
+    if length(p) == 3
+        vloss = factor^-1 * vloss + p[1]^-1 + p[2]^-1 + 0 * p[3];
+    end
+    if length(p) == 2
+        vloss = factor^-1 * vloss + p[1]^-1 + 0 * p[2];
+    end
+
+    return vloss, sol;
+end
+
+"""
     loss_sys(p)
 
 Loss function to estimate nonlinear systems.

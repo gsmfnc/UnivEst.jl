@@ -2,6 +2,81 @@
 #######################EXPORTED FUNCTIONS#######################################
 ################################################################################
 """
+    gain_training(sys::system_obs, tfin::Float64, its::Int, d::Function,
+        ics::Matrix{Float64};
+        estW0::Vector = [], opt = Adam(1e-01),
+        dtime::Float64 = 0.0, save::Bool = false,
+        callback::Bool = false, gain_type::Int = UnivEst.TIMEVARYING_GAIN,
+        hgo_type::Int = UnivEst.CLASSICALHGO,
+        coeffs::Vector = [], S::Vector = [])
+"""
+function gain_training(sys::system_obs, tfin::Float64, its::Int, d::Function,
+        ics::Matrix{Float64};
+        estW0::Vector = [], opt = Adam(1e-01),
+        dtime::Float64 = 0.0, save::Bool = false,
+        callback::Bool = false, gain_type::Int = UnivEst.TIMEVARYING_GAIN,
+        hgo_type::Int = UnivEst.CLASSICALHGO,
+        coeffs::Vector = [], S::Vector = [])
+    d_samples = Int(round((dtime - sys.t0) / sys.ts)) + 1;
+
+    n = length(sys.u0);
+    if hgo_type == UnivEst.MIN_CASCADE && length(S) < n
+        println("A valid vector of saturations S must be supplied.");
+        return;
+    end
+
+    global SUPPENV
+    f = get_system_dynamics(sys.phi, sys.u0, sys.p);
+    gain_func = get_gain_func(gain_type);
+    phi(u, t) = sys.phi(u, sys.p, t);
+    if hgo_type == UnivEst.CLASSICALHGO
+        hgo = get_hgo_dynamics(hgo_type, n, coeffs, gain_func, phi);
+        dynamics1(u, p, t) = [
+            f(u[1:n], sys.p, t)
+            hgo(u[(n + 1):end], u[1] + d(t), p, t)
+        ];
+        SUPPENV = gain_training_env(dynamics1, n, sys.t0, tfin, sys.ts,
+            sys.tolerances, d_samples, ics, hgo_type, S, coeffs, gain_type);
+    else
+        hgo = get_min_cascade_dynamics(n, coeffs, gain_func, S, phi);
+        dynamics2(u, p, t) = [
+            f(u[1:n], sys.p, t)
+            hgo(u[(n + 1):end], u[1] + d(t), p, t)
+        ];
+        SUPPENV = gain_training_env(dynamics2, n, sys.t0, tfin, sys.ts,
+            sys.tolerances, d_samples, ics, hgo_type, S, coeffs, gain_type);
+    end
+
+    if length(estW0) == 0
+        if gain_type == UnivEst.INCREASING_GAIN
+            estp = [50.0, 0.0];
+        end
+        if gain_type == UnivEst.DECREASING_GAIN
+            estp = [50.0, 30.0, 5.0];
+        end
+        if gain_type == UnivEst.TIMEVARYING_GAIN
+            estp = [50.0, 0.0, 30.0, 5.0];
+        end
+    end
+
+    if !callback
+        estp = optimize_loss(estp, loss_gain, opt, its);
+    else
+        estp = optimize_loss(estp, loss_gain, opt, its, callback = callback,
+            callbackfunc = gain_callback);
+    end
+
+    if save
+        open("TRAININGSAVE.CSV", "w") do io
+            writedlm(io, "_")
+            writedlm(io, estp)
+        end
+    end
+
+    return estp;
+end
+
+"""
     sys_training(sys::system, data::Matrix{Float64}, tfs::Vector{Float64},
         its::Int;
         estu0::Vector = [], estp0::Vector = [], opt = Adam(1e-02),
@@ -310,7 +385,8 @@ end
         its::Int)
 """
 function optimize_loss(estp::Vector{Float64}, loss_func::Function, opt,
-        its::Int; callback::Bool = false)
+        its::Int;
+        callback::Bool = false, callbackfunc::Function = default_callback)
     pinit = ComponentArray(estp);
     adtype = Optimization.AutoZygote();
     optf = Optimization.OptimizationFunction((x, p) -> loss_func(x),
@@ -328,7 +404,7 @@ function optimize_loss(estp::Vector{Float64}, loss_func::Function, opt,
         res = Optimization.solve(optprob,
                                 opt,
                                 maxiters = its,
-                                callback = default_callback);
+                                callback = callbackfunc);
         end
     end
     estp = res.u;
@@ -349,6 +425,19 @@ function default_callback(p, l, pred)
     println("loss = ", l)
     plt = plot(SUPPENV.data[:, 1])
     plt = plot!(pred[1, :])
+    display(plt)
+
+    return false;
+end
+
+"""
+    gain_callback(p, l, pred)
+"""
+function gain_callback(p, l, pred)
+    println("p = ", p)
+    println("loss = ", l)
+    plt = plot(pred[1:SUPPENV.n, :]')
+    plt = plot!(pred[(SUPPENV.n + 1):(2 * SUPPENV.n), :]')
     display(plt)
 
     return false;

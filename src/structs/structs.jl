@@ -234,3 +234,39 @@ struct freq_training_env
     tf_tr::Float64
     y_samples::Matrix{Float64}
 end
+
+"""
+    struct gain_training_env
+        f::Function
+
+        n::Int
+
+        t0::Float64
+        tf::Float64
+        ts::Float64
+        tolerances::Vector{Float64}
+
+        d_samples::Int
+
+        ics::Matrix{Float64}
+    end
+"""
+struct gain_training_env
+    f::Function
+
+    n::Int
+
+    t0::Float64
+    tf::Float64
+    ts::Float64
+    tolerances::Vector{Float64}
+
+    d_samples::Int
+
+    ics::Matrix{Float64}
+
+    hgo_type::Int
+    S::Vector
+    coeffs::Vector
+    gain_type::Int
+end

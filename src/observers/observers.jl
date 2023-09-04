@@ -390,8 +390,10 @@ end
     get_hgo_dynamics(hgo_type::Int, n::Int, coeffs::Vector,
         epsilon::Float64, phi::Function, p::Vector{Float64})
 	get_hgo_dynamics(hgo_type::Int, n::Int, coeffs::Vector,
-        epsilon::Vector{Float64}, S::Vector, phi::Function,
+        epsilon::Float64, S::Vector, phi::Function,
 		p::Vector{Float64})
+    get_hgo_dynamics(hgo_type::Int, n::Int, coeffs::Vector, g::Function,
+        phi::Function)
 
 Returns a function that implements high-gain observers for integration purposes.
 """
@@ -426,6 +428,28 @@ function get_hgo_dynamics(hgo_type::Int, n::Int, coeffs::Vector,
         epsilon::Float64, S::Vector, phi::Function,
 		p::Vector{Float64})
     return get_min_cascade_dynamics(n, coeffs, epsilon, S, phi, p);
+end
+function get_hgo_dynamics(hgo_type::Int, N::Int, coeffs::Vector, g::Function,
+        phi::Function)
+    k = get_coeffs_table(hgo_type, coeffs, N);
+
+    A1 = zeros(N, 1);
+    A2 = zeros(N, N);
+    for i = 1:1:N
+        A1[i, 1] = - k[i];
+        if i + 1 <= N
+            A2[i, i + 1] = 1;
+        end
+    end
+    B = - A1[:, 1];
+    H = zeros(N, 1);
+    H[end] = 1;
+
+    gain_vec(p, t) = [g(p, t).^i for i in [1:N]];
+    hgo(u, y, p, t) = vec(A1 .* gain_vec(p, t)[1] * u[1] + A2 * u +
+        B .* gain_vec(p, t)[1] * y + H * phi(u, t));
+
+    return hgo
 end
 
 """
@@ -486,6 +510,9 @@ end
 	get_min_cascade_dynamics(n::Int, coeffs::Vector,
 		epsilon::Vector{Float64}, S::Vector{Float64}, phi::Function,
 		p::Vector{Float64})
+	get_min_cascade_dynamics(n::Int, coeffs::Vector,
+		g::Function, S::Vector{Float64}, phi::Function,
+		p::Vector{Float64})
 
 Return minimum-order cascade of hgos dynamics function.
 """
@@ -531,6 +558,44 @@ function get_min_cascade_dynamics(n::Int, coeffs::Vector,
 		return dz4;
     end
 end
+function get_min_cascade_dynamics(N::Int, coeffs::Vector,
+		g::Function, S::Vector, phi::Function)
+    k = get_coeffs_table(UnivEst.MIN_CASCADE, coeffs, N)
+
+    if N == 2
+        hx2 = get_hx(N, g, k, S);
+		dz2(z, y, p, t) = [
+			- g(p, t) * k[1] * (z[1] - y) + hx2(z, p, t)[2]
+			- g(p, t) * k[2] / k[1] * (z[2] + hx2(z, p, t)[1]) +
+                (g(p, t) * k[2] / k[1])^-1 * phi(hx2(z, p, t), t)
+		];
+		return dz2;
+    end
+    if N == 3
+        hx3 = get_hx(N, g, k, S);
+		dz3(z, y, p, t) = [
+			- g(p, t) * k[1] * (z[1] - y) + hx3(z, p, t)[2]
+			- g(p, t) * k[2] / k[1] * (z[2] + hx3(z, p, t)[1]) +
+                (g(p, t) * k[2] / k[1])^-1 * hx3(z, p, t)[3]
+			- g(p, t) * k[3] / k[2] * (z[3] + hx3(z, p, t)[2]) +
+                (g(p, t) * k[3] / k[2])^-1 * phi(hx3(z, p, t), t)
+		];
+		return dz3;
+    end
+    if N == 4
+        hx4 = get_hx(N, g, k, S);
+		dz4(z, y, p, t) = [
+			- g(p, t) * k[1] * (z[1] - y) + hx4(z, p, t)[2]
+			- g(p, t) * k[2] / k[1] * (z[2] + hx4(z, p, t)[1]) +
+                (g(p, t) * k[2] / k[1])^-1 * hx4(z, p, t)[3]
+			- g(p, t) * k[3] / k[2] * (z[3] + hx4(z, p, t)[2]) +
+                (g(p, t) * k[3] / k[2])^-1 * hx4(z, p, t)[4]
+			- g(p, t) * k[4] / k[3] * (z[4] + hx4(z, p, t)[3]) +
+                (g(p, t) * k[4] / k[3])^-1 * phi(hx4(z, p, t), t)
+		];
+		return dz4;
+    end
+end
 
 """
     get_hx(n::Int, g::Float64, coeffs::Vector{Float64}, S::Vector{Float64})
@@ -565,6 +630,40 @@ function get_hx(n::Int, g::Float64, coeffs::Vector{Float64}, S::Vector)
 		return hx4;
     end
 end
+function get_hx(n::Int, g::Function, coeffs::Vector{Float64}, S::Vector)
+	sat(x, v) = sign(x) * v * min(abs(x) / v, 1);
+	if length(S) == 0
+		S = ones(n) * 1e03;
+	end
+
+    if n == 2
+        hx12(z) = z[1];
+        hx22(z, p, t) =
+            sat(g(p, t) * coeffs[2] / coeffs[1] * (z[2] + hx12(z)), S[1]);
+        hx2(z, p, t) = [hx12(z); hx22(z, p, t)];
+		return hx2;
+    end
+    if n == 3
+        hx13(z) = z[1];
+        hx23(z, p, t) =
+            sat(g(p, t) * coeffs[2] / coeffs[1] * (z[2] + hx13(z)), S[1]);
+        hx33(z, p, t) =
+            sat(g(p, t) * coeffs[3] / coeffs[2] * (z[3] + hx23(z, p, t)), S[2]);
+        hx3(z, p, t) = [hx13(z); hx23(z, p, t); hx33(z, p, t)];
+		return hx3;
+    end
+    if n == 4
+        hx14(z) = z[1];
+        hx24(z, p, t) =
+            sat(g(p, t) * coeffs[2] / coeffs[1] * (z[2] + hx14(z)), S[1]);
+        hx34(z, p, t) =
+            sat(g(p, t) * coeffs[3] / coeffs[2] * (z[3] + hx24(z, p, t)), S[2]);
+        hx44(z, p, t) =
+            sat(g(p, t) * coeffs[4] / coeffs[3] * (z[4] + hx34(z, p, t)), S[3]);
+        hx4(z, p, t) = [hx14(z); hx24(z, p, t); hx34(z, p, t); hx44(z, p, t)];
+		return hx4;
+    end
+end
 
 """
     get_mincascade_estimates(n::Int, g::Float64, coeffs::Vector{Float64},
@@ -583,4 +682,80 @@ function get_mincascade_estimates(n::Int, g::Float64, coeffs::Vector, S::Vector,
         hx[:, i] = hx_f(z[:, i]);
     end
     return hx;
+end
+function get_mincascade_estimates(n::Int, g::Float64, coeffs::Vector, S::Vector,
+        z::Vector{Float64})
+    k = get_coeffs_table(UnivEst.MIN_CASCADE, coeffs, n);
+    hx_f = get_hx(n, g, k, S);
+    hx = hx_f(z);
+
+    return hx;
+end
+
+"""
+    get_gain_func(gain_type::Int)
+"""
+function get_gain_func(gain_type::Int)
+    sigma(x) = exp(x) / (1 + exp(x));
+    if gain_type == UnivEst.TIMEVARYING_GAIN
+        gain1(W, t) = W[1] * sigma(t - W[2]) - W[3] * sigma(t - W[4]);
+        return gain1;
+    end
+    if gain_type == UnivEst.INCREASING_GAIN
+        gain2(W, t) = W[1] * sigma(t - W[2]);
+        return gain2;
+    end
+    if gain_type == UnivEst.DECREASING_GAIN
+        gain3(W, t) = W[1] - W[2] * sigma(t - W[3]);
+        return gain3;
+    end
+end
+
+"""
+    test_timevarying_hgo(sys::system_obs, p::Vector{Float64}, d::Function;
+        coeffs::Vector = [], gain_type::Int = UnivEst.TIMEVARYING_GAIN,
+        hgo_type::Int = UnivEst.CLASSICALHGO, S::Vector = [])
+"""
+function test_timevarying_hgo(sys::system_obs, p::Vector{Float64}, d::Function;
+        coeffs::Vector = [], gain_type::Int = UnivEst.TIMEVARYING_GAIN,
+        hgo_type::Int = UnivEst.CLASSICALHGO, S::Vector = [])
+
+    n = length(sys.u0);
+    if hgo_type == UnivEst.MIN_CASCADE && length(S) < n
+        println("A valid vector of saturations S must be supplied.");
+        return;
+    end
+
+    f = get_system_dynamics(sys.phi, sys.u0, sys.p);
+    gain_func = get_gain_func(gain_type);
+    phi(u, t) = sys.phi(u, sys.p, t);
+    u0 = vcat(sys.u0, zeros(n, 1));
+    if hgo_type == UnivEst.CLASSICALHGO
+        hgo = get_hgo_dynamics(hgo_type, n, coeffs, gain_func, phi);
+        dynamics1(u, p, t) = [
+            f(u[1:n], sys.p, t)
+            hgo(u[(n + 1):end], u[1] + d(t), p, t)
+        ];
+        sol = get_sol(dynamics1, vec(u0), p, sys.t0, sys.tf, sys.ts,
+            sys.tolerances);
+        return sol[1:n, :]', sol[(n + 1):(2 * n), :]';
+    else
+        hgo = get_min_cascade_dynamics(n, coeffs, gain_func, S, phi);
+        dynamics2(u, p, t) = [
+            f(u[1:n], sys.p, t)
+            hgo(u[(n + 1):end], u[1] + d(t), p, t)
+        ];
+        sol = get_sol(dynamics2, vec(u0), p, sys.t0, sys.tf, sys.ts,
+            sys.tolerances);
+
+        rnum = size(sol, 2);
+        hx = zeros(rnum, n);
+        for i = 1:1:rnum
+            tmp = sol[(n + 1):(2 * n), i];
+            hx[i, :] = get_mincascade_estimates(n,
+                gain_func(p, (i - 1) * sys.ts), coeffs, S,
+                reshape(tmp, size(tmp, 1), size(tmp, 2)));
+        end
+        return sol[1:n, :]', hx;
+    end
 end
