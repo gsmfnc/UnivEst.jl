@@ -4,6 +4,8 @@
 Loss function to estimate parameters in time-varying gain.
 """
 function loss_gain(p)
+    global SUPPENV
+
     N = size(SUPPENV.ics, 1);
     vloss = 0.0;
     sol = 0;
@@ -17,29 +19,30 @@ function loss_gain(p)
             z = sol[(SUPPENV.n + 1):(2 * SUPPENV.n), :];
 
             gain_func = get_gain_func(SUPPENV.gain_type);
-            for i = SUPPENV.d_samples:1:size(z, 2)
+            for j = SUPPENV.d_samples:1:size(z, 2)
                 hx2 = get_mincascade_estimates(SUPPENV.n,
-                    gain_func(p, (i - 1) * SUPPENV.ts), SUPPENV.coeffs,
-                    SUPPENV.S, z[:, i]);
-                vloss = vloss + sum(abs.(sol[1:SUPPENV.n, i] - hx2));
+                    gain_func(p, (j - 1) * SUPPENV.ts), SUPPENV.coeffs,
+                    SUPPENV.S, z[:, j]);
+                vloss = vloss + sum(abs.(sol[1:SUPPENV.n, j] - hx2));
             end
         else
-            for i = SUPPENV.d_samples:1:size(sol, 2)
-                vloss = vloss + sum(abs.(sol[1:SUPPENV.n, i] -
-                    sol[(SUPPENV.n + 1):(2 * SUPPENV.n), i]));
+            for j = SUPPENV.d_samples:1:size(sol, 2)
+                vloss = vloss + sum(abs.(sol[1:SUPPENV.n, j] -
+                    sol[(SUPPENV.n + 1):(2 * SUPPENV.n), j]));
             end
         end
     end
     factor = (size(sol, 2) - SUPPENV.d_samples) * N;
 
     if length(p) == 4
-        vloss = factor^-1 * vloss + p[1]^-1 + 0 * p[2] + p[3]^-1 + 0 * p[4];
+        vloss = factor^-1 * vloss + p[1]^-1 + exp(0.1 * p[2]) + p[3]^-1 +
+            exp(0.1 * p[4]);
     end
     if length(p) == 3
-        vloss = factor^-1 * vloss + p[1]^-1 + p[2]^-1 + 0 * p[3];
+        vloss = factor^-1 * vloss + p[1]^-1 + p[2]^-1 + exp(0.1 * p[3]);
     end
     if length(p) == 2
-        vloss = factor^-1 * vloss + p[1]^-1 + 0 * p[2];
+        vloss = factor^-1 * vloss + p[1]^-1 + exp(0.1 * p[2]);
     end
 
     return vloss, sol;
@@ -51,6 +54,8 @@ end
 Loss function to estimate nonlinear systems.
 """
 function loss_sys(p)
+    global SUPPENV
+
     hu0 = p[1:SUPPENV.n];
     hp = p[(SUPPENV.n + 1):end];
 
@@ -86,6 +91,8 @@ end
 Batch loss function to estimate nonlinear systems.
 """
 function batch_loss_sys(p)
+    global SUPPENV
+
     hu0 = p[1:SUPPENV.n];
     hp = p[(SUPPENV.n + 1):end];
 
@@ -124,6 +131,8 @@ end
 Loss function to estimate systems in observability canonical form.
 """
 function loss_sysobs(p)
+    global SUPPENV
+
     hu0 = p[1:SUPPENV.n];
     hp = p[(SUPPENV.n + 1):end];
 
@@ -158,6 +167,8 @@ end
 Loss function to estimate forward kinematics.
 """
 function loss_fd(p)
+    global SUPPENV
+
     N = Int(round((SUPPENV.tf_train - SUPPENV.fd_kin.t0) /
         SUPPENV.fd_kin.ts)) + 1;
 
@@ -177,6 +188,8 @@ end
 Loss function to estimate periodical signals.
 """
 function loss_freq(p)
+    global SUPPENV
+
     n = Int(floor(length(p) - 1) / 3);
 
     freqs = p[1:n];

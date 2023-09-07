@@ -1,0 +1,13 @@
+import Pkg;
+Pkg.add("DifferentialEquations")
+Pkg.add("DiffEqFlux")
+Pkg.add("Optimization")
+Pkg.add("Plots")
+Pkg.add("FFTW")
+Pkg.add("DSP")
+Pkg.add("Optim")
+Pkg.add("ControlSystems")
+Pkg.add("ComponentArrays")
+Pkg.add("OptimizationOptimJL")
+Pkg.add("OptimizationFlux")
+Pkg.add("DelimitedFiles")

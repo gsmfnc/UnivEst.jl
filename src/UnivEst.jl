@@ -16,6 +16,7 @@ include("structs/utils_structs.jl")
 include("system_solution/system_solution.jl")
 
 #export bode_hgo, estimate_t_derivatives, get_hgo_matrices, test_hgo
+#export test_timevarying_hgo, gain_plot
 include("observers/observers.jl")
 
 #export fd_kin_training, periodical_signal_training, find_infos_from_estp

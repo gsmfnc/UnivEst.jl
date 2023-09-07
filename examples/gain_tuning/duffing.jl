@@ -18,6 +18,8 @@ ics = [
 # time-varying gain for classical hgo
 estp = gain_training(duff, 30.0, 1000, d, ics, callback = true);
 
+gain_plot(estp, duff.t0, duff.ts, duff.tf)
+
 x, hx = test_timevarying_hgo(duff, estp, d,
     gain_type = UnivEst.TIMEVARYING_GAIN, hgo_type = UnivEst.CLASSICALHGO);
 
@@ -28,6 +30,8 @@ plot!(hx)
 
 estp = gain_training(duff, 10.0, 1000, d, ics, hgo_type = UnivEst.MIN_CASCADE,
     S = [10.0, 10.0], gain_type = UnivEst.DECREASING_GAIN, callback = true);
+
+gain_plot(estp, duff.t0, duff.ts, duff.tf, gain_type = UnivEst.DECREASING_GAIN)
 
 x, hx = test_timevarying_hgo(duff, estp, d,
     gain_type = UnivEst.DECREASING_GAIN, hgo_type = UnivEst.MIN_CASCADE,

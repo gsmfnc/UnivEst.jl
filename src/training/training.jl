@@ -59,18 +59,16 @@ function gain_training(sys::system_obs, tfin::Float64, its::Int, d::Function,
         end
     end
 
+    open("TRAININGSAVE.CSV", "w") do io
+        writedlm(io, "_")
+        writedlm(io, estp')
+    end
+
     if !callback
         estp = optimize_loss(estp, loss_gain, opt, its);
     else
         estp = optimize_loss(estp, loss_gain, opt, its, callback = callback,
             callbackfunc = gain_callback);
-    end
-
-    if save
-        open("TRAININGSAVE.CSV", "w") do io
-            writedlm(io, "_")
-            writedlm(io, estp)
-        end
     end
 
     return estp;
@@ -436,9 +434,9 @@ end
 function gain_callback(p, l, pred)
     println("p = ", p)
     println("loss = ", l)
-    plt = plot(pred[1:SUPPENV.n, :]')
-    plt = plot!(pred[(SUPPENV.n + 1):(2 * SUPPENV.n), :]')
-    display(plt)
+    #plt = plot(pred[1:SUPPENV.n, :]')
+    #plt = plot!(pred[(SUPPENV.n + 1):(2 * SUPPENV.n), :]')
+    #display(plt)
 
     return false;
 end

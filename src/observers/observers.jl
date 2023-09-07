@@ -381,6 +381,23 @@ function test_hgo(sys::system_obs, hgo_type::Int, epsilon::Float64,
     print("Not implemented.")
 end
 
+"""
+    gain_plot(W::Vector{Float64}, t0::Float64, ts::Float64,
+        tf::Float64; gain_type::Int = UnivEst.TIMEVARYING_GAIN)
+"""
+function gain_plot(W::Vector{Float64}, t0::Float64, ts::Float64,
+        tf::Float64; gain_type::Int = UnivEst.TIMEVARYING_GAIN)
+    g_func = get_gain_func(gain_type);
+    g_vals = zeros(Int(round((tf - t0) / ts)), 1);
+    j = 1;
+    for i = t0:ts:(tf - ts)
+        g_vals[j] = g_func(W, i);
+        j = j + 1;
+    end
+    pl = plot(t0:ts:(tf - ts), g_vals);
+    return pl;
+end
+
 ################################################################################
 #############################NOT EXPORTED#######################################
 ################################################################################
