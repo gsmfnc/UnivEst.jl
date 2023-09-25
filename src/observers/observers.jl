@@ -731,11 +731,19 @@ end
 """
     test_timevarying_hgo(sys::system_obs, p::Vector{Float64}, d::Function;
         coeffs::Vector = [], gain_type::Int = UnivEst.TIMEVARYING_GAIN,
-        hgo_type::Int = UnivEst.CLASSICALHGO, S::Vector = [])
+        hgo_type::Int = UnivEst.CLASSICALHGO, S::Vector = [],
+        tfinal::Float64 = 0.0)
 """
 function test_timevarying_hgo(sys::system_obs, p::Vector{Float64}, d::Function;
         coeffs::Vector = [], gain_type::Int = UnivEst.TIMEVARYING_GAIN,
-        hgo_type::Int = UnivEst.CLASSICALHGO, S::Vector = [])
+        hgo_type::Int = UnivEst.CLASSICALHGO, S::Vector = [],
+        tfinal::Float64 = 0.0)
+
+    if tfinal == 0.0
+        tfin = sys.tf;
+    else
+        tfin = tfinal;
+    end
 
     n = length(sys.u0);
     if hgo_type == UnivEst.MIN_CASCADE && length(S) < n
@@ -753,7 +761,7 @@ function test_timevarying_hgo(sys::system_obs, p::Vector{Float64}, d::Function;
             f(u[1:n], sys.p, t)
             hgo(u[(n + 1):end], u[1] + d(t), p, t)
         ];
-        sol = get_sol(dynamics1, vec(u0), p, sys.t0, sys.tf, sys.ts,
+        sol = get_sol(dynamics1, vec(u0), p, sys.t0, tfin, sys.ts,
             sys.tolerances);
         return sol[1:n, :]', sol[(n + 1):(2 * n), :]';
     else
@@ -762,7 +770,7 @@ function test_timevarying_hgo(sys::system_obs, p::Vector{Float64}, d::Function;
             f(u[1:n], sys.p, t)
             hgo(u[(n + 1):end], u[1] + d(t), p, t)
         ];
-        sol = get_sol(dynamics2, vec(u0), p, sys.t0, sys.tf, sys.ts,
+        sol = get_sol(dynamics2, vec(u0), p, sys.t0, tfin, sys.ts,
             sys.tolerances);
 
         rnum = size(sol, 2);

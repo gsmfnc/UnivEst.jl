@@ -2,6 +2,74 @@
 #######################EXPORTED FUNCTIONS#######################################
 ################################################################################
 """
+    inverse_training(N3::Function, obs_map::Function, its::Int;
+        opt = Adam(1e-02), estp0::Vector = [], data = [], Nsamples::Int = 100)
+"""
+function inverse_training(N3::Function, obs_map::Function, its::Int, N::Int,
+        n::Int;
+        opt = Adam(1e-02), estp0::Vector = [], data = [], Nsamples::Int = 100)
+    if length(data) == 0
+        samples = randn(n, Nsamples);
+    else
+        samples = data;
+    end
+
+    global SUPPENV
+    SUPPENV = inverse_env(data, N3, obs_map);
+
+    estp = estp0;
+    if length(estp0) == 0
+        estp = randn(N * n + N * n + n * n) / n;
+    end
+
+    mean_err = loss_inv(estp);
+    println("initial mean error:", mean_err)
+
+    estp = optimize_loss(estp, loss_inv, opt, its);
+
+    mean_err = loss_inv(estp);
+    println("mean error:", mean_err)
+
+    return estp;
+end
+
+"""
+    pretraining(g::Function, Lfmh::Function, obs_map::Function, its::Int,
+        n::Int;
+        opt = Adam(1e-02), estp0::Vector = [], data = [],
+        Nsamples::Int = 100)
+"""
+function pretraining(g::Function, Lfmh::Function, obs_map::Function, its::Int,
+        N::Int, n::Int;
+        opt = Adam(1e-02), estp0::Vector = [], data = [],
+        Nsamples::Int = 100)
+
+    if length(data) == 0
+        samples = randn(n, Nsamples);
+    else
+        samples = data;
+    end
+
+    global SUPPENV
+    SUPPENV = pretraining_env(samples, g, Lfmh, obs_map);
+
+    estp = estp0;
+    if length(estp0) == 0
+        estp = randn(N + N * n + n) / n;
+    end
+
+    mean_err = loss_pre(estp);
+    println("initial mean error:", mean_err)
+
+    estp = optimize_loss(estp, loss_pre, opt, its);
+
+    mean_err = loss_pre(estp);
+    println("mean error:", mean_err)
+
+    return estp;
+end
+
+"""
     gain_training(sys::system_obs, tfin::Float64, its::Int, d::Function,
         ics::Matrix{Float64};
         estW0::Vector = [], opt = Adam(1e-01),
@@ -52,10 +120,10 @@ function gain_training(sys::system_obs, tfin::Float64, its::Int, d::Function,
             estp = [50.0, 0.0];
         end
         if gain_type == UnivEst.DECREASING_GAIN
-            estp = [50.0, 30.0, 5.0];
+            estp = [50.0, 48.0, 5.0];
         end
         if gain_type == UnivEst.TIMEVARYING_GAIN
-            estp = [50.0, 0.0, 30.0, 5.0];
+            estp = [50.0, 0.0, 48.0, 5.0];
         end
     end
 

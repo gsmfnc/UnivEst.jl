@@ -1,4 +1,40 @@
 """
+    loss_inv(p)
+
+Loss function to estimate inverse of observability map.
+"""
+function loss_inv(p)
+    global SUPPENV
+
+    N = size(SUPPENV.data, 2);
+    vloss = 0;
+    for i = 1:1:N
+        zeta = SUPPENV.data[:, i];
+        vloss = vloss + sum(abs.(SUPPENV.N3(SUPPENV.obs_map(zeta, 0.0), p) -
+            zeta));
+    end
+
+    return 1 / N * vloss;
+end
+"""
+    loss_pre(p)
+
+Loss function to estimate parameters using g(O_m(zeta))=L_f^m h(zeta).
+"""
+function loss_pre(p)
+    global SUPPENV
+
+    N = size(SUPPENV.data, 2);
+    vloss = 0;
+    for i = 1:1:N
+        zeta = SUPPENV.data[:, i];
+        vloss = vloss + sum(abs.(SUPPENV.g(SUPPENV.obs_map(zeta, 0.0), p, 0.0) -
+            SUPPENV.Lfmh(zeta, 0.0)));
+    end
+
+    return 1 / N * vloss;
+end
+"""
     loss_gain(p)
 
 Loss function to estimate parameters in time-varying gain.
@@ -35,14 +71,14 @@ function loss_gain(p)
     factor = (size(sol, 2) - SUPPENV.d_samples) * N;
 
     if length(p) == 4
-        vloss = factor^-1 * vloss + p[1]^-1 + exp(0.1 * p[2]) + p[3]^-1 +
-            exp(0.1 * p[4]);
+        vloss = factor^-1 * vloss + 10^2 * p[1]^-2 + p[2]^2 + 10^2 * p[3]^-2 +
+            0.1^2 * p[4]^2;
     end
     if length(p) == 3
-        vloss = factor^-1 * vloss + p[1]^-1 + p[2]^-1 + exp(0.1 * p[3]);
+        vloss = factor^-1 * vloss + 10^2 * p[1]^-2 + p[2]^-2 + 0.1^2 * p[3]^2;
     end
     if length(p) == 2
-        vloss = factor^-1 * vloss + p[1]^-1 + exp(0.1 * p[2]);
+        vloss = factor^-1 * vloss + 10^2 * p[1]^-2 + p[2]^2;
     end
 
     return vloss, sol;

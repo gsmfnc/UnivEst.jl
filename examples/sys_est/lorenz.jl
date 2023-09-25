@@ -10,7 +10,7 @@ f(u, p, t) = [
 ];
 h(u, p, t) = u[1];
 
-## Training without time derivatives
+## Training
 lorenz = init_system(f, h, u0, p = p, t0 = 0.0, tf = 50.0, ts = 1e-02);
 lor_sol, lor_y = get_sys_solution(lorenz);
 

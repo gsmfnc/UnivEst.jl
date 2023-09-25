@@ -3,8 +3,10 @@
 ################################################################################
 
 """
-    get_sys_solution(sys::system_obs)
-    get_sys_solution(sys::system)
+    get_sys_solution(sys::system_obs;
+        p_arg::Vector = [], u0_arg::Vector = [])
+    get_sys_solution(sys::system;
+        p_arg::Vector = [], u0_arg::Vector = [], p_h_arg::Vector = [])
 
 Returns the solution of the dynamical system associated with sys.
 """

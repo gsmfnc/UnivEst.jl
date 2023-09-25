@@ -270,3 +270,30 @@ struct gain_training_env
     coeffs::Vector
     gain_type::Int
 end
+
+"""
+    struct pretraining_env
+        data::Matrix{Float64}
+        g::Function
+        Lfmh::Function
+    end
+"""
+struct pretraining_env
+    data::Matrix{Float64}
+    g::Function
+    Lfmh::Function
+    obs_map::Function
+end
+
+"""
+    struct inverse_env
+        data::Matrix{Float64}
+        g::Function
+        Lfmh::Function
+    end
+"""
+struct inverse_env
+    data::Matrix{Float64}
+    N3::Function
+    obs_map::Function
+end

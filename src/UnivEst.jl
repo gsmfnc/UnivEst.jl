@@ -20,7 +20,7 @@ include("system_solution/system_solution.jl")
 include("observers/observers.jl")
 
 #export fd_kin_training, periodical_signal_training, find_infos_from_estp
-#export sys_training, gain_training
+#export sys_training, gain_training, pretraining, inverse_training
 include("training/training.jl")
 
 include("training/losses.jl")
