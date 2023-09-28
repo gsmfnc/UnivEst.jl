@@ -236,6 +236,29 @@ struct freq_training_env
 end
 
 """
+    struct grad_inv_env
+        dynamics::Function
+        n::Int
+        m::Int
+        t0::Float64
+        tf::Float64
+        ts::Float64
+        u0::Vector
+        tolerances::Vector
+    end
+"""
+struct grad_inv_env
+    dynamics::Function
+    n::Int
+    m::Int
+    t0::Float64
+    tf::Float64
+    ts::Float64
+    u0::Vector
+    tolerances::Vector
+end
+
+"""
     struct gain_training_env
         f::Function
 

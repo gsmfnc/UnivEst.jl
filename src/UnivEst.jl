@@ -21,6 +21,7 @@ include("observers/observers.jl")
 
 #export fd_kin_training, periodical_signal_training, find_infos_from_estp
 #export sys_training, gain_training, pretraining, inverse_training
+#export gradient_inversion_training
 include("training/training.jl")
 
 include("training/losses.jl")

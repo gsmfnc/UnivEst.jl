@@ -1,16 +1,26 @@
-u0 = [0.9933, 0.0007, 1.0015];
-p = [-0.9994];
+##### Lorenz system ############################################################
 f(u, p, t) = [
     u[2] - u[1]
     - u[1] * u[3]
     u[1] * u[2] + p[1]
 ];
 h(u, p, t) = u[1];
+
+# Estimated Lorenz
+u0 = [0.9933, 0.0007, 1.0015];
+p = [-0.9994];
+lor_e = init_system(f, h, u0, p = p, t0 = 0.0, tf = 50.0, ts = 1e-02);
+lor_sol_e, lor_y_e = get_sys_solution(lor_e);
+samples = lor_y_e;
+
+# Real Lorenz
+u0 = [1.0, 0.0, 1.0];
+p = [-1.0];
 lor = init_system(f, h, u0, p = p, t0 = 0.0, tf = 50.0, ts = 1e-02);
 lor_sol, lor_y = get_sys_solution(lor);
-samples = lor_y;
+samples_r = lor_y;
 
-# Pre-training of g
+##### Pre-training of g ########################################################
 N = 32;
 n = 3;
 sigma(x) = tanh(x) + 1;
@@ -28,9 +38,9 @@ Lf3h(u, t) = - u[1] * (p[1] + u[1]^2) + u[1] * u[3] +
     (u[2] - u[1]) * (1 - u[3]);
 estp = pretraining(g, Lf3h, obs_map, 1000, N, n, Nsamples = 500);
 
-# Training of g
-lorobs = init_system_obs(g, obs_map(u0), p = estp, t0 = lor.t0, tf = lor.tf,
-    ts = lor.ts);
+##### Training of g ############################################################
+lorobs = init_system_obs(g, obs_map(u0, 0.0), p = estp, t0 = lor.t0,
+    tf = lor.tf, ts = lor.ts);
 
 tfs = [2.5, 5.0, 7.5, 10.0, 15.0, 20.0];
 hu0, hp, times, estps = sysobs_training(lorobs, samples, tfs, 300,
@@ -50,6 +60,7 @@ hu0, hp, times, estps = sysobs_training(lorobs, samples, tfs, 100,
 writedlm("lor_hp.csv", hp, ",")
 writedlm("lor_hu0.csv", hu0, ",")
 
+##### Gain tuning ##############################################################
 lorobs = init_system_obs(g, hu0, p = hp, t0 = lor.t0, tf = lor.tf,
     ts = lor.ts);
 
@@ -61,22 +72,23 @@ ics = [
     0.8862 -1.1288 -0.1280
     0.9933 -0.9925 -0.0021
 ];
-#estp = gain_training(lorobs, 10.0, 1000, d, ics, hgo_type = UnivEst.MIN_CASCADE,
-#    S = [10.0, 10.0, 10.0], gain_type = UnivEst.DECREASING_GAIN,
-#    callback = true);
-estp = [53.41418738455853, 44.25187590816433, -1.3922708187327921];
 
-gain_plot(estp, lorobs.t0, lorobs.ts, lorobs.tf,
-    gain_type = UnivEst.DECREASING_GAIN)
+#estp = gain_training(lorobs, 10.0, 1000, d, ics, callback = true,
+    estW0 = [100.0, 0.0, 10.0, 10.0]);
+estp = [50.88, -0.00, 47.71, 0.82]
+
+gain_plot(estp, lorobs.t0, lorobs.ts, lorobs.tf)
+gvals = gain_plot(estp, lorobs.t0, lorobs.ts, lorobs.tf, get_vals = 1);
+writedlm("lorobs_gain.csv", gvals, ",")
 
 x, hx = test_timevarying_hgo(lorobs, estp, d,
-    gain_type = UnivEst.DECREASING_GAIN, hgo_type = UnivEst.MIN_CASCADE,
-    S = [10.0, 10.0, 10.0]);
-plot(x)
-plot!(x - hx)
+    gain_type = UnivEst.TIMEVARYING_GAIN, hgo_type = UnivEst.CLASSICALHGO);
 
-# Estimation of inverse of observability map
-N = 32;
+plot(x)
+plot!(hx)
+
+##### Estimation of inverse of observability map ###############################
+N = 64;
 n = 3;
 W3(p) = reshape(p[1:(N * n)], n, :);
 V3(p) = reshape(p[(N * n + 1):(N * n + N * n)], :, n);
@@ -101,3 +113,33 @@ p3 = plot!(hlor_sol[3, :]);
 plot(p1, p2, p3, layout = (3, 1))
 
 writedlm("lor_n3.csv", estp, ",")
+writedlm("lor_x1.csv", lor_sol, ",")
+writedlm("lor_hx1.csv", hlor_sol, ",")
+
+##### Gradient-like inversion algorithm ########################################
+K(u, t) = [
+    1   -1  -u[3]+1
+    0   1   -1
+    0   0   -u[1]
+];
+d(t) = 0.1 * sin(100 * t);
+grad_p = gradient_inversion_algorithm(lor_e, lorobs, K, obs_map, d, estp,
+        10.0, 300, callback = true, opt = Adam(1e00))
+grad_p = [95.46, 1.0, 53.42, -2.54, 43.17, 3.36]
+
+x, hxi, hx = test_timevarying_hgo(lor, lorobs, grad_p[3:end], grad_p[1:2], d);
+
+p1 = plot(x[:, 1]);
+p1 = plot!(hx[:, 1]);
+p2 = plot(x[:, 2]);
+p2 = plot!(hx[:, 2]);
+p3 = plot(x[:, 3]);
+p3 = plot!(hx[:, 3]);
+plot(p1, p2, p3, layout = (3, 1))
+
+writedlm("lor_x.csv", x, ",")
+writedlm("lor_hx.csv", hx, ",")
+
+gvals = gain_plot(grad_p[3:end], lorobs.t0, lorobs.ts, lorobs.tf, get_vals = 1);
+
+writedlm("lor_gain.csv", gvals, ",")

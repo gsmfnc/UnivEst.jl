@@ -383,10 +383,12 @@ end
 
 """
     gain_plot(W::Vector{Float64}, t0::Float64, ts::Float64,
-        tf::Float64; gain_type::Int = UnivEst.TIMEVARYING_GAIN)
+        tf::Float64; gain_type::Int = UnivEst.TIMEVARYING_GAIN,
+        get_vals::Int = 0)
 """
 function gain_plot(W::Vector{Float64}, t0::Float64, ts::Float64,
-        tf::Float64; gain_type::Int = UnivEst.TIMEVARYING_GAIN)
+        tf::Float64; gain_type::Int = UnivEst.TIMEVARYING_GAIN,
+        get_vals::Int = 0)
     g_func = get_gain_func(gain_type);
     g_vals = zeros(Int(round((tf - t0) / ts)), 1);
     j = 1;
@@ -395,7 +397,11 @@ function gain_plot(W::Vector{Float64}, t0::Float64, ts::Float64,
         j = j + 1;
     end
     pl = plot(t0:ts:(tf - ts), g_vals);
-    return pl;
+    if get_vals == 0
+        return pl;
+    else
+        return g_vals;
+    end
 end
 
 ################################################################################
@@ -733,6 +739,11 @@ end
         coeffs::Vector = [], gain_type::Int = UnivEst.TIMEVARYING_GAIN,
         hgo_type::Int = UnivEst.CLASSICALHGO, S::Vector = [],
         tfinal::Float64 = 0.0)
+    test_timevarying_hgo(sys::system, sysobs::system_obs,
+        gain_params::Vector{Float64}, grad_params::Vector{Float64}, d::Function;
+        coeffs::Vector = [], gain_type::Int = UnivEst.TIMEVARYING_GAIN,
+        hgo_type::Int = UnivEst.CLASSICALHGO, S::Vector = [],
+        tfinal::Float64 = 0.0)
 """
 function test_timevarying_hgo(sys::system_obs, p::Vector{Float64}, d::Function;
         coeffs::Vector = [], gain_type::Int = UnivEst.TIMEVARYING_GAIN,
@@ -783,4 +794,39 @@ function test_timevarying_hgo(sys::system_obs, p::Vector{Float64}, d::Function;
         end
         return sol[1:n, :]', hx;
     end
+end
+function test_timevarying_hgo(sys::system, sysobs::system_obs,
+        gain_params::Vector{Float64}, grad_params::Vector{Float64}, d::Function;
+        coeffs::Vector = [], gain_type::Int = UnivEst.TIMEVARYING_GAIN,
+        hgo_type::Int = UnivEst.CLASSICALHGO, S::Vector = [],
+        tfinal::Float64 = 0.0)
+    if hgo_type != UnivEst.CLASSICALHGO
+        println("hgo_type = UnivEst.CLASSICALHGO: not implemented yet");
+    end
+    if gain_type != UnivEst.TIMEVARYING_GAIN
+        println("gain_type = UnivEst.TIMEVARYING_GAIN: not implemented yet");
+    end
+
+    if tfinal == 0.0
+        tfin = sys.tf;
+    else
+        tfin = tfinal;
+    end
+
+    global SUPPENV
+    n = length(sys.u0);
+    m = length(sysobs.u0);
+    gain_func = get_gain_func(gain_type);
+    phi(u, t) = sysobs.phi(u, sysobs.p, t);
+    hgo = get_hgo_dynamics(hgo_type, m, coeffs, gain_func, phi);
+    grad_alg(x, xi, t) = (sign(t - grad_params[2]) + 1) / 2 *
+        grad_params[1] * K(x, t) * (xi - obs_map(x, t));
+    dynamics(u, p, t) = [
+        sys.f(u[1:n], sys.p, t)
+        hgo(u[(n + 1):(n + m)], u[1] + d(t), gain_params, t)
+        grad_alg(u[(n + m + 1):end], u[(n + 1):(n + m)], t)
+    ];
+    sol = get_sol(dynamics, vec(u0), p, sys.t0, tfin, sys.ts,
+        sys.tolerances);
+    return sol[1:n, :]', sol[(n + 1):(n + m), :]', sol[(n + m + 1):end, :]';
 end

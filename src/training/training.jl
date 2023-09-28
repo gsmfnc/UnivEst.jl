@@ -2,6 +2,58 @@
 #######################EXPORTED FUNCTIONS#######################################
 ################################################################################
 """
+    gradient_inversion_algorithm(sys::system, sysobs::system_obs,
+        K::Function, obs_map::Function,
+        gain_params::Vector{Float64}, tfin::Float64, its::Int;
+        callback::Bool = false, gain_type::Int = UnivEst.TIMEVARYING_GAIN,
+        hgo_type::Int = UnivEst.CLASSICALHGO, coeffs::Vector = [],
+        estp0::Vector = [], opt = Adam(1e-02))
+"""
+function gradient_inversion_algorithm(sys::system, sysobs::system_obs,
+        K::Function, obs_map::Function, d::Function,
+        gain_params::Vector{Float64}, tfin::Float64, its::Int;
+        callback::Bool = false, gain_type::Int = UnivEst.TIMEVARYING_GAIN,
+        hgo_type::Int = UnivEst.CLASSICALHGO, coeffs::Vector = [],
+        estp0::Vector = [], opt = Adam(1e-02))
+    if hgo_type != UnivEst.CLASSICALHGO
+        println("hgo_type = UnivEst.CLASSICALHGO: not implemented yet");
+    end
+    if gain_type != UnivEst.TIMEVARYING_GAIN
+        println("gain_type = UnivEst.TIMEVARYING_GAIN: not implemented yet");
+    end
+
+    global SUPPENV
+    n = length(sys.u0);
+    m = length(sysobs.u0);
+    gain_func = get_gain_func(gain_type);
+    phi(u, t) = sysobs.phi(u, sysobs.p, t);
+    hgo = get_hgo_dynamics(hgo_type, m, coeffs, gain_func, phi);
+    grad_alg(x, xi, p, t) = (sign(t - p[2]) + 1) / 2 * p[1] * K(x, t) *
+        (xi - obs_map(x, t));
+    dynamics(u, p, t) = [
+        sys.f(u[1:n], sys.p, t)
+        hgo(u[(n + 1):(n + m)], u[1] + d(t), p[3:end], t)
+        grad_alg(u[(n + m + 1):end], u[(n + 1):(n + m)], p, t)
+    ];
+    SUPPENV = grad_inv_env(dynamics, n, m, sys.t0, tfin, sys.ts, sys.u0,
+        sys.tolerances);
+
+    estp = vcat(estp0, gain_params);
+    if length(estp0) == 0
+        estp = vcat([1e02, 1.0], gain_params);
+    end
+
+    if !callback
+        estp = optimize_loss(estp, loss_invalg, opt, its);
+    else
+        estp = optimize_loss(estp, loss_invalg, opt, its, callback = callback,
+            callbackfunc = gain_callback);
+    end
+
+    return estp;
+end
+
+"""
     inverse_training(N3::Function, obs_map::Function, its::Int;
         opt = Adam(1e-02), estp0::Vector = [], data = [], Nsamples::Int = 100)
 """
@@ -125,6 +177,8 @@ function gain_training(sys::system_obs, tfin::Float64, its::Int, d::Function,
         if gain_type == UnivEst.TIMEVARYING_GAIN
             estp = [50.0, 0.0, 48.0, 5.0];
         end
+    else
+        estp = estW0;
     end
 
     open("TRAININGSAVE.CSV", "w") do io

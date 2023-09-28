@@ -1,4 +1,25 @@
 """
+    loss_invalg(p)
+
+Loss function to estimate parameter of the gradient inversion algorithm.
+"""
+function loss_invalg(p)
+    global SUPPENV
+
+    vloss = 0.0;
+    u0 = vcat(SUPPENV.u0, zeros(SUPPENV.m, 1), zeros(SUPPENV.n, 1));
+    sol = get_sol(SUPPENV.dynamics, vec(u0), p, SUPPENV.t0, SUPPENV.tf,
+        SUPPENV.ts, SUPPENV.tolerances);
+    N = size(sol, 2);
+    for i = 1:1:N
+        vloss = vloss + sum(abs.(sol[1:SUPPENV.n, i] -
+            sol[(SUPPENV.n + SUPPENV.m + 1):end, i]));
+    end
+
+    return 1 / N * vloss, sol;
+end
+
+"""
     loss_inv(p)
 
 Loss function to estimate inverse of observability map.
