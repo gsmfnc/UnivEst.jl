@@ -44,7 +44,7 @@ lorobs = init_system_obs(g, obs_map(u0, 0.0), p = estp, t0 = lor.t0,
 
 tfs = [2.5, 5.0, 7.5, 10.0, 15.0, 20.0];
 hu0, hp, times, estps = sysobs_training(lorobs, samples, tfs, 300,
-    save = true, callback = true, estp0 = estp, estu0 = obs_map(u0),
+    save = true, callback = true, estp0 = estp, estu0 = obs_map(u0, 0.0),
     opt = Adam(1e-03));
 
 tfs = [25.0];
@@ -87,6 +87,34 @@ x, hx = test_timevarying_hgo(lorobs, estp, d,
 plot(x)
 plot!(hx)
 
+##### Gradient-like inversion algorithm ########################################
+K(u, t) = [
+    1   -1  -u[3]+1
+    0   1   -1
+    0   0   -u[1]
+];
+d(t) = 0.1 * sin(100 * t);
+grad_p = gradient_inversion_algorithm(lor_e, lorobs, K, obs_map, d, estp,
+        10.0, 300, callback = true, opt = Adam(1e00))
+grad_p = [95.46, 1.0, 53.42, -2.54, 43.17, 3.36]
+
+x, hxi, hx = test_timevarying_hgo(lor, lorobs, grad_p[3:end], grad_p[1:2], d);
+
+p1 = plot(x[:, 1]);
+p1 = plot!(hx[:, 1]);
+p2 = plot(x[:, 2]);
+p2 = plot!(hx[:, 2]);
+p3 = plot(x[:, 3]);
+p3 = plot!(hx[:, 3]);
+plot(p1, p2, p3, layout = (3, 1))
+
+writedlm("lor_x.csv", x, ",")
+writedlm("lor_hx.csv", hx, ",")
+
+gvals = gain_plot(grad_p[3:end], lorobs.t0, lorobs.ts, lorobs.tf, get_vals = 1);
+
+writedlm("lor_gain.csv", gvals, ",")
+
 ##### Estimation of inverse of observability map ###############################
 N = 64;
 n = 3;
@@ -115,31 +143,3 @@ plot(p1, p2, p3, layout = (3, 1))
 writedlm("lor_n3.csv", estp, ",")
 writedlm("lor_x1.csv", lor_sol, ",")
 writedlm("lor_hx1.csv", hlor_sol, ",")
-
-##### Gradient-like inversion algorithm ########################################
-K(u, t) = [
-    1   -1  -u[3]+1
-    0   1   -1
-    0   0   -u[1]
-];
-d(t) = 0.1 * sin(100 * t);
-grad_p = gradient_inversion_algorithm(lor_e, lorobs, K, obs_map, d, estp,
-        10.0, 300, callback = true, opt = Adam(1e00))
-grad_p = [95.46, 1.0, 53.42, -2.54, 43.17, 3.36]
-
-x, hxi, hx = test_timevarying_hgo(lor, lorobs, grad_p[3:end], grad_p[1:2], d);
-
-p1 = plot(x[:, 1]);
-p1 = plot!(hx[:, 1]);
-p2 = plot(x[:, 2]);
-p2 = plot!(hx[:, 2]);
-p3 = plot(x[:, 3]);
-p3 = plot!(hx[:, 3]);
-plot(p1, p2, p3, layout = (3, 1))
-
-writedlm("lor_x.csv", x, ",")
-writedlm("lor_hx.csv", hx, ",")
-
-gvals = gain_plot(grad_p[3:end], lorobs.t0, lorobs.ts, lorobs.tf, get_vals = 1);
-
-writedlm("lor_gain.csv", gvals, ",")

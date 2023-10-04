@@ -184,6 +184,8 @@ end
         d_samples::Int
 
         data::Matrix{Float64}
+        u0::Vector{Float64}
+        fixed_ic::Bool
     end
 """
 struct sysobs_training_env
@@ -199,6 +201,8 @@ struct sysobs_training_env
     d_samples::Int
 
     data::Matrix{Float64}
+    u0::Vector{Float64}
+    fixed_ic::Bool
 end
 
 """

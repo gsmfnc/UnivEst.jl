@@ -287,17 +287,14 @@ end
     sysobs_training(sys::system_obs, data::Matrix{Float64},
         tfs::Vector{Float64}, its::Int;
         estu0::Vector = [], estp0::Vector = [], opt = Adam(1e-02),
-        dtime::Float64 = 0.0, save::Bool = false, callback::Bool = false)
+        dtime::Float64 = 0.0, save::Bool = false, callback::Bool = false,
+        fixed_ic::Bool = false)
 """
 function sysobs_training(sys::system_obs, data::Matrix{Float64},
         tfs::Vector{Float64}, its::Int;
         estu0::Vector = [], estp0::Vector = [], opt = Adam(1e-02),
-        dtime::Float64 = 0.0, save::Bool = false, callback::Bool = false)
-    global SUPPENV
-    f = get_system_dynamics(sys.phi, sys.u0, sys.p);
-    d_samples = Int(round((dtime - sys.t0) / sys.ts)) + 1;
-    SUPPENV = sysobs_training_env(f, sys.obs_map, length(sys.u0), sys.t0,
-        sys.tf, sys.ts, sys.tolerances, d_samples, data);
+        dtime::Float64 = 0.0, save::Bool = false, callback::Bool = false,
+        fixed_ic::Bool = false)
 
     if length(estu0) == 0
         estu0 = vec(randn(1, length(sys.u0)) * 1e-02);
@@ -307,6 +304,12 @@ function sysobs_training(sys::system_obs, data::Matrix{Float64},
     end
 
     estp = vcat(estu0, estp0);
+
+    global SUPPENV
+    f = get_system_dynamics(sys.phi, sys.u0, sys.p);
+    d_samples = Int(round((dtime - sys.t0) / sys.ts)) + 1;
+    SUPPENV = sysobs_training_env(f, sys.obs_map, length(sys.u0), sys.t0,
+        sys.tf, sys.ts, sys.tolerances, d_samples, data, vec(estu0), fixed_ic);
 
     open("TRAININGSAVE.CSV", "w") do io
         writedlm(io, "_");

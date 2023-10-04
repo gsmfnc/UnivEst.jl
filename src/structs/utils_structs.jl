@@ -62,10 +62,10 @@ sysobs_training_env object.
 function set_sysobs_training_env_val(env::sysobs_training_env, param::String,
         new_value::Any)
     labels = ["f", "obs_map", "n", "t0", "tf_tr", "ts", "tolerances",
-        "d_samples", "data"];
+        "d_samples", "data", "u0", "fixed_ic"];
 
     arguments_array = [env.f, env.obs_map, env.n, env.t0, env.tf_tr, env.ts,
-        env.tolerances, env.d_samples, env.data];
+        env.tolerances, env.d_samples, env.data, env.u0, env.fixed_ic];
     for i = 1:1:length(labels)
         if labels[i] == param
             arguments_array[i] = new_value;
@@ -74,7 +74,7 @@ function set_sysobs_training_env_val(env::sysobs_training_env, param::String,
 
     a = arguments_array;
     new_env = sysobs_training_env(a[1], a[2], a[3], a[4], a[5], a[6], a[7],
-        a[8], a[9]);
+        a[8], a[9], a[10], a[11]);
     return new_env;
 end
 

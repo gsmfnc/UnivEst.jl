@@ -193,8 +193,13 @@ function loss_sysobs(p)
     hu0 = p[1:SUPPENV.n];
     hp = p[(SUPPENV.n + 1):end];
 
-    sol = get_sol(SUPPENV.f, hu0, hp, SUPPENV.t0, SUPPENV.tf_tr, SUPPENV.ts,
-        SUPPENV.tolerances);
+    if SUPPENV.fixed_ic == true
+        sol = get_sol(SUPPENV.f, SUPPENV.u0, hp, SUPPENV.t0, SUPPENV.tf_tr,
+            SUPPENV.ts, SUPPENV.tolerances);
+    else
+        sol = get_sol(SUPPENV.f, hu0, hp, SUPPENV.t0, SUPPENV.tf_tr, SUPPENV.ts,
+            SUPPENV.tolerances);
+    end
 
     if SUPPENV.obs_map(hu0, hp, 0.0) == 0
         vloss = 0;
