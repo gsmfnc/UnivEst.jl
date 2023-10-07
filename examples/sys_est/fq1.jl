@@ -6,21 +6,10 @@ fq1 = init_system_obs(phi, u0, p = p, t0 = 0.0, tf = 50.0, ts = 1e-02);
 fq1_sol, fq1_y = get_sys_solution(fq1);
 
 # Noise signal
-signum(u, p, t) = 20.0 * [
-    u[2]
-    - sign(u[1]) + 20.0^-1 * (sin(t) + 10.0 * sin(10.0 * t))
-];
-d(u, p, t) = 1e-02 * (u[1] + u[2] + u[1] * u[2]);
-signum_u0 = [1.0, 0.1];
-signum_noise = init_system(signum, d, signum_u0, t0 = 0.0, tf = fq1.tf,
-                            ts = fq1.ts);
-noise_sol, noise_samples = get_sys_solution(signum_noise);
-
-plot(fq1_y)
-plot!(noise_samples)
-plot!(fq1_y + noise_samples)
-
+noise_samples = randn(length(fq1_y), 1) * 0.05;
 samples = fq1_y + noise_samples;
+plot(samples)
+plot!(noise_samples)
 
 # Training
 N = 16;
@@ -42,12 +31,12 @@ hu02, hp2, times, estps2 = sysobs_training(fq1_est, samples, tfs, 300,
     save = true, callback = true, estu0 = hu0, estp0 = hp);
 
 tfs = [35.0, 40.0];
-hu02, hp2, times, estps2 = sysobs_training(fq1_est, samples, tfs, 300,
-    save = true, callback = true, estu0 = hu0, estp0 = hp,
-    opt = Adam(1e-03));
+hu03, hp3, times, estps3 = sysobs_training(fq1_est, samples, tfs, 300,
+    save = true, callback = true, estu0 = hu02, estp0 = hp2,
+    opt = Adam(1e-04));
 
 fq1_hsol, fq1_hy =
-    get_sys_solution(fq1_est, u0_arg = hu0, p_arg = hp);
+    get_sys_solution(fq1_est, u0_arg = hu02, p_arg = hp2);
 plot(fq1_y)
 plot!(fq1_hy)
 

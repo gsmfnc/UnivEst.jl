@@ -10,29 +10,18 @@ duff = init_system_obs(phi, u0, p = p, t0 = 0.0, tf = 50.0, ts = 1e-02);
 duff_sol, duff_y = get_sys_solution(duff);
 
 # Noise signal
-signum(u, p, t) = 20.0 * [
-    u[2]
-    - sign(u[1]) + 20.0^-1 * (sin(t) + 10.0 * sin(10.0 * t))
-];
-d(u, p, t) = 1e-02 * (u[1] + u[2] + u[1] * u[2]);
-signum_u0 = [1.0, 0.1];
-signum_noise = init_system(signum, d, signum_u0, t0 = 0.0, tf = duff.tf,
-                            ts = duff.ts);
-noise_sol, noise_samples = get_sys_solution(signum_noise);
-
-plot(duff_y)
-plot!(noise_samples)
-plot!(duff_y + noise_samples)
-
+noise_samples = randn(length(duff_y), 1) * 0.05;
 samples = duff_y + noise_samples;
+plot(samples)
+plot!(noise_samples)
 
-# Training without time derivatives
-tfs = [2.5, 5.0, 7.5, 10.0, 12.5, 15.0, 20.0];
-hu0, hp, times, estps = sysobs_training(duff, samples, tfs, 300, save = true,
+# Training
+tfs = [2.5, 5.0, 7.5, 10.0];
+hu0, hp, times, estps = sysobs_training(duff, samples, tfs, 1000, save = true,
     callback = true);
 estps0 = estps;
 
-tfs = [25.0, 30.0, 35.0];
+tfs = [12.5, 15.0, 20.0, 25.0, 30.0, 35.0];
 hu0, hp, times, estps = sysobs_training(duff, samples, tfs, 300, save = true,
     estu0 = estps0[1:2, end], estp0 = estps0[3:end, end], callback = true,
     opt = Adam(1e-03));

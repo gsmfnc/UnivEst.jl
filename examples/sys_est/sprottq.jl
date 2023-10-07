@@ -12,21 +12,10 @@ sprott_sol, sprott_y = get_sys_solution(sprott);
 
 ## Training
 # Noise signal
-signum(u, p, t) = 20.0 * [
-    u[2]
-    - sign(u[1]) + 20.0^-1 * (sin(t) + 10.0 * sin(10.0 * t))
-];
-d(u, p, t) = 2.5e-02 * (u[1] + u[2] + u[1] * u[2]);
-signum_u0 = [1.0, 0.1];
-signum_noise = init_system(signum, d, signum_u0, t0 = 0.0, tf = sprott.tf,
-                            ts = sprott.ts);
-noise_sol, noise_samples = get_sys_solution(signum_noise);
-
-plot(sprott_y)
-plot!(noise_samples)
-plot!(sprott_y + noise_samples)
-
+noise_samples = randn(length(sprott_y), 1) * 0.1;
 samples = sprott_y + noise_samples;
+plot(samples)
+plot!(noise_samples)
 
 tfs = [2.5, 5.0, 7.5, 10.0];
 hu0, hp, times, estps = sys_training(sprott, samples, tfs, 300, save = true,
