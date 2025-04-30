@@ -3,6 +3,7 @@
 Software versions:
 
 -   Julia version 1.8.3 (2022-11-14)
+    (Julia version 1.9.2 (2023-07-05))
 -   ComponentArrays v0.13.7
 -   ControlSystems v1.5.2
 -   DSP v0.7.7

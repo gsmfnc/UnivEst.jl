@@ -11,6 +11,15 @@
 
 Initializes a struct of system type.
 """
+function init_system(f::Function;
+        p::Vector{Float64} = [0.0], p_h::Vector{Float64} = [0.0],
+        t0::Float64 = 0.0, tf::Float64 = 10.0, ts::Float64 = 1e-02,
+        reltol::Float64 = 1e-8, abstol::Float64 = 1e-8)
+    blank(a, b, c) = 0;
+    u0 = zeros(1);
+    sys = system(f, blank, blank, t0, ts, tf, u0, p, p_h, [reltol, abstol]);
+    return sys;
+end
 function init_system(f::Function, h::Function, u0::Vector{Float64};
         p::Vector{Float64} = [0.0], p_h::Vector{Float64} = [0.0],
         t0::Float64 = 0.0, tf::Float64 = 10.0, ts::Float64 = 1e-02,
@@ -19,17 +28,26 @@ function init_system(f::Function, h::Function, u0::Vector{Float64};
     sys = system(f, h, blank, t0, ts, tf, u0, p, p_h, [reltol, abstol]);
     return sys;
 end
-function init_system(f::Function, h::Function, obs_map::Function,
-        u0::Vector{Float64};
-        p::Vector{Float64} = [0.0], p_h::Vector{Float64} = [0.0],
+
+"""
+    init_controlled_system(f::Function, u::Function;
         t0::Float64 = 0.0, tf::Float64 = 10.0, ts::Float64 = 1e-02,
+        u0::Vector{Float64} = [0.0], p::Vector{Float64} = [0.0],
         reltol::Float64 = 1e-8, abstol::Float64 = 1e-8)
-    sys = system(f, h, obs_map, t0, ts, tf, u0, p, p_h, [reltol, abstol]);
+"""
+function init_controlled_system(f::Function, u::Function;
+        t0::Float64 = 0.0, tf::Float64 = 10.0, ts::Float64 = 1e-02,
+        u0::Vector{Float64} = [0.0], p::Vector{Float64} = [0.0],
+        reltol::Float64 = 1e-8, abstol::Float64 = 1e-8)
+    sys = controlled_system(f, u, t0, ts, tf, u0, p, [reltol, abstol]); 
     return sys;
 end
 
 """
     init_system_obs(phi::Function, u0::Vector{Float64};
+        p::Vector{Float64} = [0.0], t0::Float64 = 0.0, tf::Float64 = 10.0,
+        ts::Float64 = 1e-02, reltol::Float64 = 1e-8, abstol::Float64 = 1e-8)
+    init_system_obs(phi::Function, obs_map::Function, u0::Vector{Float64};
         p::Vector{Float64} = [0.0], t0::Float64 = 0.0, tf::Float64 = 10.0,
         ts::Float64 = 1e-02, reltol::Float64 = 1e-8, abstol::Float64 = 1e-8)
 

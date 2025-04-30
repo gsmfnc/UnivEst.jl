@@ -16,7 +16,7 @@ observer.
 'coeffs' are the k coefficients.
 """
 function bode_hgo(hgo_type::Int, n::Int, epsilon::Vector{Float64};
-        coeffs = [])
+        coeffs = [], w = range(10^-2, 10^3, length=1000))
     A, B = get_hgo_matrices(hgo_type, n, coeffs, epsilon);
 
     N = size(A, 1);
@@ -27,7 +27,7 @@ function bode_hgo(hgo_type::Int, n::Int, epsilon::Vector{Float64};
     D = 0;
 
     ss_obs = ss(A, B, C, D);
-    return bode(ss_obs)
+    return bode(ss_obs, w)
 end
 
 """
@@ -53,7 +53,7 @@ end
         d_sys_u0::Vector{Float64};
         coeffs::Vector = [], gamma::Float64 = 0.0)
 
-Estimates time derivatives with output corrupted by additive noise (given by
+Estimates 'n' time derivatives with output corrupted by additive noise (given by
 the function d).
 'd' has to be a function with one argument.
 'd', 'd_sys' and 'd_sys_u0' can be used to generate a disturbance that is given
@@ -63,6 +63,28 @@ respectively, e.g., d(u), d_sys(u, t)).
 Returns the system sys solution, the estimated derivatives and the state of
 d_sys.
 """
+function estimate_t_derivatives(samples::Matrix{Float64}, hgo_type::Int, n::Int,
+        epsilon::Vector{Float64}, t0::Float64, ts::Float64, tf::Float64;
+        coeffs::Vector = [], tolerances = [1e-8, 1e-8])
+    dynamics = get_hgo_dynamics(hgo_type, n, coeffs, epsilon);
+    global SUPPENV
+    SUPPENV = t_deriv_env(samples, t0, ts, dynamics);
+
+    m = 0;
+    if hgo_type == UnivEst.CLASSICALHGO
+        m = n + 1;
+    end
+    if hgo_type == UnivEst.M_CASCADE
+        m = 2 * n + 1;
+    end
+    if hgo_type == UnivEst.CASCADE
+        m = 2 * n;
+    end
+
+    sol = get_sol(estimate_t_derivatives_dynamics, zeros(m), [0.0], t0, tf, ts,
+        tolerances);
+    return sol;
+end
 function estimate_t_derivatives(sys::system_obs, hgo_type::Int, n::Int,
         epsilon::Vector{Float64};
         coeffs::Vector = [], gamma::Float64 = 0.0)
@@ -829,4 +851,15 @@ function test_timevarying_hgo(sys::system, sysobs::system_obs,
     sol = get_sol(dynamics, vec(u0), p, sys.t0, tfin, sys.ts,
         sys.tolerances);
     return sol[1:n, :]', sol[(n + 1):(n + m), :]', sol[(n + m + 1):end, :]';
+end
+
+"""
+    estimate_t_derivatives_dynamics(du, u, p, t)
+
+Dynamics function to estimate time derivatives of a vector of samples.
+"""
+function estimate_t_derivatives_dynamics(du, u, p, t)
+    y = SUPPENV.samples[min(length(SUPPENV.samples),
+        Int(floor((t - SUPPENV.t0) / SUPPENV.ts)) + 1)];
+    du .= SUPPENV.dynamics(u, y);
 end

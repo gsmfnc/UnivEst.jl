@@ -49,9 +49,15 @@ function get_sys_solution(sys::system;
 
     sol = get_sol(sys.f, u0, p, sys.t0, sys.tf, sys.ts, sys.tolerances);
     N = size(sol, 2);
-    output = zeros(N, 1);
-    for i = 1:1:N
-        output[i] = sys.h(sol[:, i], p_h, (i - 1) * sys.ts);
+    output = zeros(N, length(sys.h(sol[:, 1], p_h, (1 - 1) * sys.ts)));
+    if length(sys.h(sol[:, 1], p_h, (1 - 1) * sys.ts)) > 1
+        for i = 1:1:N
+            output[i, :] = sys.h(sol[:, i], p_h, (i - 1) * sys.ts);
+        end
+    else
+        for i = 1:1:N
+            output[i] = sys.h(sol[:, i], p_h, (i - 1) * sys.ts);
+        end
     end
 
     return sol, output
@@ -73,6 +79,35 @@ function get_periodical_signal_samples(sig, bias::Float64,
     end
 
     return samples;
+end
+
+"""
+    get_controlled_sys_solution(sys::controlled_system, p::Vector,
+        x0::Vector; tf::Float64 = 0.0)
+"""
+function get_controlled_sys_solution(sys::controlled_system, p::Vector,
+        x0::Vector;
+        tf::Float64 = 0.0)
+
+    if tf == 0.0
+        tfin = sys.tf;
+    else
+        tfin = tf;
+    end
+
+    sol = get_sol(sys.f, x0, p, sys.t0, tfin, sys.ts, sys.tolerances);
+    N = size(sol, 2);
+    m = length(x0);
+    u_vals = zeros(m, N);
+    for i = 1:1:N
+        if m > 1
+            u_vals[:, i] = sys.u(sol[:, i], p);
+        else
+            u_vals[i] = sys.u(sol[:, i], p);
+        end
+    end
+    t_vals = sys.t0:sys.ts:(tfin - sys.ts);
+    return t_vals, sol[:, :], u_vals
 end
 
 ################################################################################
@@ -113,7 +148,7 @@ function get_sol(f, u0::Vector{Float64}, p::Vector{Float64}, t0::Float64,
         length = Int(round((tf - t0) / ts))));
     sol = solve(prob, p = p, abstol = tolerances[1], reltol = tolerances[2],
         sensealg = InterpolatingAdjoint(autojacvec =
-            ZygoteVJP(allow_nothing = true)));
+            ZygoteVJP(allow_nothing = true)), maxiters = 1e9);
     return sol[:, :]
 end
 

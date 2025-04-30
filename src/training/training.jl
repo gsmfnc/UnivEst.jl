@@ -242,11 +242,6 @@ function sys_training(sys::system, data::Matrix{Float64}, tfs::Vector{Float64},
 
     estp = vcat(estu0, estp0);
 
-    open("TRAININGSAVE.CSV", "w") do io
-        writedlm(io, "_")
-        writedlm(io, estp')
-    end
-
     N = length(tfs);
     if save
         times = zeros(N, 1);
@@ -272,6 +267,11 @@ function sys_training(sys::system, data::Matrix{Float64}, tfs::Vector{Float64},
                 estp = optimize_loss(estp, lossf, opt, its,
                     callback = callback);
             end
+        end
+
+        open("TRAININGSAVE.CSV", "w") do io
+            writedlm(io, "_")
+            writedlm(io, estp')
         end
     end
 
@@ -308,8 +308,10 @@ function sysobs_training(sys::system_obs, data::Matrix{Float64},
     global SUPPENV
     f = get_system_dynamics(sys.phi, sys.u0, sys.p);
     d_samples = Int(round((dtime - sys.t0) / sys.ts)) + 1;
+    mxs = maximum(abs, data[d_samples:end, :], dims = 1);
     SUPPENV = sysobs_training_env(f, sys.obs_map, length(sys.u0), sys.t0,
-        sys.tf, sys.ts, sys.tolerances, d_samples, data, vec(estu0), fixed_ic);
+        sys.tf, sys.ts, sys.tolerances, d_samples, data, vec(estu0), fixed_ic,
+        mxs);
 
     open("TRAININGSAVE.CSV", "w") do io
         writedlm(io, "_");
@@ -500,6 +502,59 @@ function find_infos_from_estp(estp::Vector{Float64})
     return puls, phases, amps, bias
 end
 
+"""
+    ctrl_training(sys::controlled_system, estp0::Vector,
+        data::Matrix{Float64}, its::Int;
+        opt = Adam(1e-02), alpha::Float64 = 1e01, beta::Float64 = 5e00,
+        gamma::Float64 = 0.0, zeta::Float64 = 0.0)
+    ctrl_training(sys::controlled_system, estp0::Vector,
+        data::Matrix{Float64}, its::Int, P::Matrix{Float64};
+        opt = Adam(1e-02), alpha::Float64 = 1e01, beta::Float64 = 5e00,
+        gamma::Float64 = 0.0, zeta::Float64 = 0.0)
+    ctrl_training(sys::controlled_system, sys_des::Function,
+        estp0::Vector, data::Matrix{Float64}, its::Int, P::Matrix{Float64};
+        opt = Adam(1e-02))
+"""
+function ctrl_training(sys::controlled_system, estp0::Vector,
+        data::Matrix{Float64}, its::Int;
+        opt = Adam(1e-02), alpha::Float64 = 1e01, beta::Float64 = 5e00,
+        gamma::Float64 = 0.0, zeta::Float64 = 0.0)
+    global SUPPENV
+
+    n = size(data, 1);
+    P = zeros(n, n);
+    for i = 1:1:n
+        P[i, i] = 1;
+    end
+
+    SUPPENV = control_training_env(alpha, beta, gamma, zeta, P, data, sys.f,
+        sys.u, sys.tolerances);
+    estp = optimize_loss(estp0, loss_ctrl, opt, its,
+        callback = true, callbackfunc = ctrl_callback);
+    return estp;
+end
+function ctrl_training(sys::controlled_system, estp0::Vector,
+        data::Matrix{Float64}, its::Int, P::Matrix{Float64};
+        opt = Adam(1e-02), alpha::Float64 = 1e01, beta::Float64 = 5e00,
+        gamma::Float64 = 0.0, zeta::Float64 = 0.0)
+    global SUPPENV
+    SUPPENV = control_training_env(alpha, beta, gamma, zeta, P, data, sys.f,
+        sys.u, sys.tolerances);
+    estp = optimize_loss(estp0, loss_ctrl, opt, its,
+        callback = true, callbackfunc = ctrl_callback);
+    return estp;
+end
+function ctrl_training(sys::controlled_system, sys_des::Function,
+        estp0::Vector, data::Matrix{Float64}, its::Int, P::Matrix{Float64};
+        opt = Adam(1e-02))
+    global SUPPENV
+    SUPPENV = control_training_env_w_des(P, data, sys.f, sys_des, sys.u,
+        sys.tolerances);
+    estp = optimize_loss(estp0, loss_ctrl_w_des, opt, its,
+        callback = true, callbackfunc = ctrl_callback);
+    return estp;
+end
+
 ################################################################################
 ##############################NOT EXPORTED######################################
 ################################################################################
@@ -562,6 +617,16 @@ function gain_callback(p, l, pred)
     #plt = plot(pred[1:SUPPENV.n, :]')
     #plt = plot!(pred[(SUPPENV.n + 1):(2 * SUPPENV.n), :]')
     #display(plt)
+
+    return false;
+end
+
+"""
+    ctrl_callback(p, l, pred)
+"""
+function ctrl_callback(p, l)
+    println("p = ", p)
+    println("loss = ", l)
 
     return false;
 end

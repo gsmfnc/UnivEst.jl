@@ -124,6 +124,35 @@ struct periodical_signal
     tf::Float64
 end
 
+"""
+    struct controlled_system
+        f::Function
+        u::Function
+
+        t0::Float64
+        ts::Float64
+        tf::Float64
+
+        u0::Vector
+        p::Vector
+
+        tolerances::Vector{Float64}
+    end
+"""
+struct controlled_system
+    f::Function
+    u::Function
+
+    t0::Float64
+    ts::Float64
+    tf::Float64
+
+    u0::Vector
+    p::Vector
+
+    tolerances::Vector{Float64}
+end
+
 ################################################################################
 ##############################NOT EXPORTED######################################
 ################################################################################
@@ -186,6 +215,8 @@ end
         data::Matrix{Float64}
         u0::Vector{Float64}
         fixed_ic::Bool
+
+        mxs::Matrix{Float64}
     end
 """
 struct sysobs_training_env
@@ -203,6 +234,8 @@ struct sysobs_training_env
     data::Matrix{Float64}
     u0::Vector{Float64}
     fixed_ic::Bool
+
+    mxs::Matrix{Float64}
 end
 
 """
@@ -323,4 +356,75 @@ struct inverse_env
     data::Matrix{Float64}
     N3::Function
     obs_map::Function
+end
+
+"""
+    struct t_deriv_env
+        samples::Matrix{Float64}
+        t0::Float64
+        ts::Float64
+        dynamics::Function
+    end
+"""
+struct t_deriv_env
+    samples::Matrix{Float64}
+    t0::Float64
+    ts::Float64
+    dynamics::Function
+end
+
+"""
+    struct control_training_env
+        alpha::Float64
+        beta::Float64
+        gamma::Float64
+        zeta::Float64
+        P::Matrix{Float64}
+
+        data::Matrix{Float64}
+        f::Function
+        u::Function
+
+        tolerances::Vector{Float64}
+    end
+"""
+struct control_training_env
+    alpha::Float64
+    beta::Float64
+    gamma::Float64
+    zeta::Float64
+    P::Matrix{Float64}
+
+    data::Matrix{Float64}
+    f::Function
+    u::Function
+
+    tolerances::Vector{Float64}
+end
+
+"""
+    struct control_training_env_w_des
+        alpha::Float64
+        beta::Float64
+        gamma::Float64
+        zeta::Float64
+        P::Matrix{Float64}
+
+        data::Matrix{Float64}
+        f::Function
+        f_des::Function
+        u::Function
+
+        tolerances::Vector{Float64}
+    end
+"""
+struct control_training_env_w_des
+    P::Matrix{Float64}
+
+    data::Matrix{Float64}
+    f::Function
+    f_des::Function
+    u::Function
+
+    tolerances::Vector{Float64}
 end

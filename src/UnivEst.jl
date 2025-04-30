@@ -2,32 +2,40 @@ using DifferentialEquations, DiffEqFlux, Optimization, Plots, FFTW, DSP
 using Optim, ControlSystems, ComponentArrays, OptimizationOptimJL
 using OptimizationFlux, DelimitedFiles
 
-#export system_obs, forward_kinematics, periodical_signal, system
+export system_obs, forward_kinematics, periodical_signal, system
+export controlled_system
 include("structs/structs.jl")
 
-#export init_system_obs, init_forward_kinematics, init_periodical_signal
-#export init_system
+export init_system_obs, init_forward_kinematics, init_periodical_signal
+export init_system, init_controlled_system
 include("structs/init_structs.jl")
 
-#export evaluate_forward_kinematics
+export evaluate_forward_kinematics
 include("structs/utils_structs.jl")
 
-#export get_sys_solution, get_periodical_signal_samples
+export get_sys_solution, get_periodical_signal_samples
 include("system_solution/system_solution.jl")
 
-#export bode_hgo, estimate_t_derivatives, get_hgo_matrices, test_hgo
-#export test_timevarying_hgo, gain_plot
+export bode_hgo, estimate_t_derivatives, get_hgo_matrices, test_hgo
+export test_timevarying_hgo, gain_plot
 include("observers/observers.jl")
 
-#export fd_kin_training, periodical_signal_training, find_infos_from_estp
-#export sys_training, gain_training, pretraining, inverse_training
-#export gradient_inversion_training
+export fd_kin_training, periodical_signal_training, find_infos_from_estp
+export sys_training, gain_training, pretraining, inverse_training
+export gradient_inversion_training, ctrl_training
 include("training/training.jl")
 
 include("training/losses.jl")
 
 export fft_plot, find_peaks_infos
 include("fft_funcs/fft_funcs.jl")
+
+export get_lyapunov_derivative_values, plot_lyapunov_derivative_values_2d
+export plot_lyapunov_derivative_values_3d
+include("utils/lyapunov.jl")
+
+export plot_vector_fields
+include("utils/plot_vector_fields.jl")
 
 struct tmp
     CLASSICALHGO

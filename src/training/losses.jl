@@ -122,16 +122,16 @@ function loss_sys(p)
     vloss = 0;
     if SUPPENV.obs_map(hu0, hp, 0.0) == 0
         for i = SUPPENV.d_samples:1:size(sol, 2)
-            vloss = vloss + abs(SUPPENV.data[i] -
-                SUPPENV.h(sol[:, i], hp, (i - 1) * SUPPENV.ts));
+            vloss = vloss + sum(abs.(SUPPENV.data[i, :] .-
+                SUPPENV.h(sol[:, i], hp, (i - 1) * SUPPENV.ts)));
         end
     else
         for i = 1:1:SUPPENV.d_samples
-            vloss = vloss + abs(SUPPENV.data[i, 1] -
-                SUPPENV.h(sol[:, i], hp, (i - 1) * SUPPENV.ts));
+            vloss = vloss + sum(abs.(SUPPENV.data[i, 1] .-
+                SUPPENV.h(sol[:, i], hp, (i - 1) * SUPPENV.ts)));
         end
         for i = SUPPENV.d_samples:1:size(sol, 2)
-            vloss = vloss + sum(abs.(SUPPENV.data[i, :] -
+            vloss = vloss + sum(abs.(SUPPENV.data[i, :] .-
                 SUPPENV.obs_map(sol[:, i], hp, (i - 1) * SUPPENV.ts)) ./
                 SUPPENV.mxs);
         end
@@ -269,4 +269,67 @@ function loss_freq(p)
     end
 
     return vloss;
+end
+
+"""
+    loss_ctrl(p)
+
+Loss function for numerical Lyapunov-based controller design.
+"""
+function loss_ctrl(p)
+    alpha = SUPPENV.alpha;
+    beta = SUPPENV.beta;
+    gamma = SUPPENV.gamma;
+    zeta = SUPPENV.zeta;
+
+    data = SUPPENV.data;
+    f = SUPPENV.f;
+    u = SUPPENV.u;
+
+    P = SUPPENV.P;
+
+    l = 0;
+    for i = 1:1:size(data, 2)
+        x = data[:, i];
+        dx = f(x, p, 0.0);
+        dv = x' * P * dx;
+
+        #l = l + (tanh(alpha * dv) + 1) * (1 + sign(dv + beta)) *
+        #    (1 + zeta * norm(x) * (dv > -norm(x))) + gamma * sum(abs.(u(x, p)));
+        l = l + (tanh(alpha * dv) + 1) + gamma * sum(abs.(u(x, p)));
+        
+        #positive_mult = 1 + beta * (dv >= 0);
+        #l = l + tanh(alpha * dv * positive_mult) +
+        #    gamma * abs(u(x, p));
+    end
+
+    return l;
+end
+
+"""
+    loss_ctrl_w_des(p)
+
+Loss function for numerical Lyapunov-based controller design.
+"""
+function loss_ctrl_w_des(p)
+    data = SUPPENV.data;
+    f = SUPPENV.f;
+    f_des = SUPPENV.f_des;
+    u = SUPPENV.u;
+
+    P = SUPPENV.P;
+
+    l = 0;
+    for i = 1:1:size(data, 2)
+        x = data[:, i];
+        dx = f(x, p, 0.0);
+        dv = x' * P * dx;
+
+        dx_des = f_des(x, zeros(1, 1), 0.0);
+        dv_des = x' * P * dx_des;
+
+        l = l + abs(dv_des - dv);
+    end
+
+    return l;
 end
