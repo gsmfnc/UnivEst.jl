@@ -1,6 +1,8 @@
 # Duffing oscillator (Equation (2.6)) in "Sprott, Julien C. Elegant chaos:
 # algebraically simple chaotic flows. World Scientific, 2010."
 
+include("../../src/UnivEst.jl")
+
 phi(u, p, t) = - u[2] + u[1] - u[1]^3 + sin(0.8 * t);
 u0 = [-0.9, 4.];
 p = [0.];

@@ -1,6 +1,8 @@
 # Chua's circuit (Table (3.4)) in "Sprott, Julien C. Elegant chaos:
 # algebraically simple chaotic flows. World Scientific, 2010."
 
+include("../../src/UnivEst.jl")
+
 p_chua = [0.3, 1.0, -1.0, 1.0, 1.0, -1.0];
 chua_dyn(u, p, t) = [
     p[1] * u[2] + p[2] * u[1] + p[3] * u[1]^3

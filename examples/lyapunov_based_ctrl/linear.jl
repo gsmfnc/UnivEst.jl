@@ -1,3 +1,5 @@
+include("../../src/UnivEst.jl")
+
 ################# SYSTEM DEFINITION
 # state dimension
 n = 2;

@@ -1,6 +1,8 @@
 # Rotating rigid body (Example 4.10 in "Nonlinear systems - Third Edition - 
 # Hassan K. Khalil")
 
+include("../../src/UnivEst.jl")
+
 u0 = [0.0, 0.0, 0.0];
 
 h(u, p, t) = [
