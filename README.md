@@ -29,6 +29,7 @@ Implements:
 References:
 1.  Gismondi, F., Possieri, C., & Tornambe, A. (2022). Design of neural high-gain observers for autonomous nonlinear systems using universal differential equations. International Journal of Dynamics and Control, 10(6), 1794-1806.
 1.  Gismondi, F. Data-driven and adaptive approaches for system identification, observer design and controller synthesis. PhD Thesis.
+1.  Gismondi, F. Data-driven Lyapunov-based synthesis of feedback controllers for nonlinear systems. https://doi.org/10.5281/zenodo.19372090
 
 # How to use
 
